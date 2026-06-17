@@ -122,6 +122,16 @@ const TOOLS = [
     },
   },
   {
+    name: 'sonar_analysis_status',
+    description: 'Check if a project has been analyzed on SonarQube. Returns whether analysis data exists and guidance if not.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        projectKey: { type: 'string', description: `Project key (defaults to SONARQUBE_PROJECT)` },
+      },
+    },
+  },
+  {
     name: 'sonar_raw',
     description: 'Escape hatch — call any SonarQube Web API GET endpoint directly. Path must start with /api/. Returns the raw JSON response.',
     inputSchema: {
@@ -193,6 +203,20 @@ const HANDLERS = {
     if (args.from) params.set('from', String(args.from));
     if (args.to) params.set('to', String(args.to));
     return sonarGet(`/api/sources/lines?${params.toString()}`);
+  },
+
+  sonar_analysis_status: async (args) => {
+    const pk = projectKey(args);
+    const proj = await sonarGet(`/api/projects/search?q=${encodeURIComponent(pk)}&ps=1`).catch(() => null);
+    if (!proj || !proj.components?.length) {
+      return { status: 'NOT_FOUND', message: `Project "${pk}" does not exist on ${HOST}. Run sonar-scanner first:\n\n  sonar-scanner -Dsonar.login=squ_...\n\nOr create it via the SonarQube UI, then run analysis.` };
+    }
+    const analyses = await sonarGet(`/api/project_analyses/search?project=${encodeURIComponent(pk)}&ps=1`).catch(() => null);
+    if (!analyses || !analyses.analyses?.length) {
+      return { status: 'NOT_ANALYZED', message: `Project "${pk}" exists but has no analysis data. Run sonar-scanner:\n\n  sonar-scanner -Dsonar.login=squ_...` };
+    }
+    const last = analyses.analyses[0];
+    return { status: 'ANALYZED', lastAnalysis: last.date, projectUrl: `${HOST}/dashboard?id=${encodeURIComponent(pk)}`, message: `Project "${pk}" was last analyzed on ${last.date}.` };
   },
 
   sonar_raw: async (args) => {

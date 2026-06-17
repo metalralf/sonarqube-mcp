@@ -34,6 +34,7 @@ Recommended to wire per-project via `.mcp.json` or `opencode.jsonc` in the proje
 | `sonar_hotspots` | Security hotspots (needs user token) |
 | `sonar_rule` | Explain a rule (why an issue fired) |
 | `sonar_source` | View flagged source lines |
+| `sonar_analysis_status` | Check if a project has been analyzed, with next steps |
 | `sonar_raw` | Escape hatch — any GET endpoint |
 
 For **Claude Code** or other MCP clients, copy `.mcp.json.example` to `.mcp.json` in your project root:
