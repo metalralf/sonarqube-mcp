@@ -1,2 +1,3 @@
 node_modules/
 .sonar.token
+.mcp.json
