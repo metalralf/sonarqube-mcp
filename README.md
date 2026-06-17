@@ -34,6 +34,25 @@ A lightweight, zero-Docker MCP server that exposes SonarQube data as AI agent to
 | `sonar_source` | View flagged source lines |
 | `sonar_raw` | Escape hatch — any GET endpoint |
 
+Or drop `.mcp.json` in your project root (openocode reads it automatically):
+
+```json
+{
+  "mcp": {
+    "sonarqube": {
+      "type": "local",
+      "command": ["npx", "-y", "github:metalralf/sonarqube-mcp"],
+      "enabled": true,
+      "environment": {
+        "SONARQUBE_URL": "${SONARQUBE_URL}",
+        "SONARQUBE_TOKEN": "${SONARQUBE_TOKEN}",
+        "SONARQUBE_PROJECT": "${SONARQUBE_PROJECT}"
+      }
+    }
+  }
+}
+```
+
 ## Configuration
 
 | Env var | Description |

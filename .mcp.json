@@ -1,0 +1,14 @@
+{
+  "mcp": {
+    "sonarqube": {
+      "type": "local",
+      "command": ["node", "src/index.mjs"],
+      "enabled": true,
+      "environment": {
+        "SONARQUBE_URL": "${SONARQUBE_URL}",
+        "SONARQUBE_TOKEN": "${SONARQUBE_TOKEN}",
+        "SONARQUBE_PROJECT": "${SONARQUBE_PROJECT}"
+      }
+    }
+  }
+}
