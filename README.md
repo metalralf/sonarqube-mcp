@@ -37,6 +37,8 @@ Recommended to wire per-project via `.mcp.json` or `opencode.jsonc` in the proje
 | `sonar_rule` | Explain a rule (why an issue fired) |
 | `sonar_source` | View flagged source lines |
 | `sonar_analysis_status` | Check if a project has been analyzed, with next steps |
+| `sonar_setup_scanner` | Install sonar-scanner as a devDependency (detects pnpm/yarn/npm) |
+| `sonar_run_analysis` | Run sonar-scanner analysis on the project |
 | `sonar_raw` | Escape hatch — any GET endpoint |
 
 For **Claude Code** or other MCP clients, copy `.mcp.json.example` to `.mcp.json` in your project root:
@@ -122,18 +124,18 @@ For inline IDE feedback, install **SonarLint** in your editor and bind it to you
 | `SONARQUBE_ORGANIZATION` | SonarCloud org key |
 | `SONARQUBE_AUTH_SCHEME` | `basic` (default) or `bearer` |
 
-## Local analysis
+## Agent-driven analysis
 
-Run SonarQube analysis on this project. Copy `sonar-project.properties.example` to `sonar-project.properties` in the project root, then:
+The MCP tools can handle the full analysis flow. Ask your agent to:
+
+1. **`sonar_setup_scanner`** — Installs sonar-scanner in your project
+2. **Generate coverage** — Run `npm run coverage` (requires c8 or similar)
+3. **`sonar_run_analysis`** — Runs the scanner and pushes results to SonarQube
+
+Or manually, copy `sonar-project.properties.example` to `sonar-project.properties` and run:
 
 ```bash
-sonar-scanner -Dsonar.login=squ_...
-```
-
-Or with pnpm:
-
-```bash
-pnpm exec sonar-scanner -Dsonar.login=squ_...
+pnpm exec sonar-scanner -Dsonar.token=squ_...
 ```
 
 ### Token types
