@@ -9,6 +9,23 @@ const authHeader = () =>
     ? `Bearer ${getToken()}`
     : `Basic ${Buffer.from(getToken() + ':').toString('base64')}`;
 
+export const sonarPost = async (path, body) => {
+  if (!getToken()) throw new Error('SONARQUBE_TOKEN is not set');
+  const res = await fetch(`${getHostUrl()}${path}`, {
+    method: 'POST',
+    headers: { authorization: authHeader(), 'Content-Type': 'application/x-www-form-urlencoded' },
+    body,
+  });
+  const text = await res.text();
+  let parsed;
+  try { parsed = JSON.parse(text); } catch { parsed = text; }
+  if (!res.ok) {
+    const detail = typeof parsed === 'object' ? JSON.stringify(parsed) : parsed;
+    throw new Error(`SonarQube ${res.status}: ${detail}`);
+  }
+  return parsed;
+};
+
 export const sonarGet = async (path) => {
   if (!getToken()) throw new Error('SONARQUBE_TOKEN is not set');
   const res = await fetch(`${getHostUrl()}${path}`, { headers: { authorization: authHeader() } });

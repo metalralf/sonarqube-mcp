@@ -85,8 +85,35 @@ describe('integration', { skip: !TOKEN }, () => {
     assert.match(status.message, /no analysis data/);
   });
 
+  it('sonar_issues compact mode strips verbose fields', async () => {
+    const res = await handler('sonar_issues')({ projectKey: 'sonarcube_mcp', compact: true, limit: 5 });
+    assert.ok(Array.isArray(res.issues));
+    if (res.issues.length > 0) {
+      assert.equal(res.issues[0].flows, undefined);
+    }
+  });
+
+  it('sonar_issues_summary returns counts', async () => {
+    const res = await handler('sonar_issues_summary')({ projectKey: 'sonarcube_mcp' });
+    assert.equal(typeof res.total, 'number');
+    assert.ok(res.by_severity);
+    assert.ok(res.by_type);
+  });
+
+  it('sonar_new_issues returns results', async () => {
+    const res = await handler('sonar_new_issues')({ projectKey: 'sonarcube_mcp', compact: true, limit: 5 });
+    assert.ok(res.issues || res.total === 0);
+  });
+
   it('sonar_raw calls arbitrary endpoint', async () => {
     const res = await handler('sonar_raw')({ path: '/api/system/health' });
     assert.ok(res.health);
+  });
+
+  it('sonar_set_issue_status rejects invalid issue key', async () => {
+    await assert.rejects(
+      () => handler('sonar_set_issue_status')({ issueKey: 'nonexistent', transition: 'confirm' }),
+      /SonarQube 400|SonarQube 404/,
+    );
   });
 });

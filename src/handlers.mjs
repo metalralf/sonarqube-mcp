@@ -1,8 +1,8 @@
 import { z } from 'zod';
 import { execSync } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { existsSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { sonarGet, orgQuery, resolveProjectKey, maybeTruncated, getHostUrl } from './api.mjs';
+import { sonarGet, sonarPost, orgQuery, resolveProjectKey, maybeTruncated, getHostUrl } from './api.mjs';
 
 const encode = (v) => encodeURIComponent(v);
 
@@ -48,26 +48,128 @@ export const TOOL_CONFIGS = [
 
   {
     name: 'sonar_issues',
-    description: 'Search SonarQube issues for a project. Returns issues sorted by severity (most severe first). Supports filtering by severity, type, and resolution status.',
+    description: 'Search SonarQube issues for a project. Returns issues sorted by severity (most severe first). Supports filtering by severity, type, resolution, compact mode, and source embedding.',
     schema: {
       projectKey: z.string().optional().describe('Project key (defaults to SONARQUBE_PROJECT)'),
       severities: z.string().optional().describe('Comma-separated: INFO,MINOR,MAJOR,CRITICAL,BLOCKER'),
       types: z.string().optional().describe('Comma-separated: CODE_SMELL,BUG,VULNERABILITY,SECURITY_HOTSPOT'),
       resolved: z.boolean().optional().describe('Include resolved issues (default false)'),
+      status: z.string().optional().describe('Filter by issue status: OPEN, CONFIRMED, RESOLVED, REOPENED, CLOSED (default open only)'),
       limit: z.number().optional().describe('Max issues (default 30, max 500)'),
+      compact: z.boolean().optional().describe('Strip verbose fields (flows, textRange, messageFormattings) for token efficiency'),
+      include_source: z.boolean().optional().describe('Embed source lines for each issue (requires extra API calls)'),
     },
-    handler: async ({ projectKey: pk, severities, types, resolved, limit }) => {
+    handler: async ({ projectKey: pk, severities, types, resolved, status, limit, compact, include_source }) => {
       const key = resolveProjectKey({ projectKey: pk });
       const params = new URLSearchParams({
         componentKeys: key,
-        resolved: String(Boolean(resolved)),
         ps: String(Math.min(Number(limit) || 30, 500)),
         s: 'SEVERITY',
         asc: 'false',
       });
+
+      if (status) {
+        params.set('status', status);
+      } else if (!resolved) {
+        params.set('resolved', 'false');
+      }
+
       if (severities) params.set('severities', severities);
       if (types) params.set('types', types);
-      return maybeTruncated(await sonarGet(`/api/issues/search?${params.toString()}`));
+
+      const data = await sonarGet(`/api/issues/search?${params.toString()}`);
+      maybeTruncated(data);
+
+      if (compact && data.issues) {
+        data.issues = data.issues.map(({ flows, textRange, messageFormattings, codeVariants, internalTags, ...rest }) => rest);
+      }
+
+      if (include_source && data.issues) {
+        data.issues = await Promise.all(data.issues.map(async (issue) => {
+          if (!issue.component || !issue.line) return issue;
+          try {
+            const src = await sonarGet(`/api/sources/lines?key=${encode(issue.component)}&from=${Math.max(1, issue.line - 2)}&to=${issue.line + 2}`);
+            return { ...issue, _source: src };
+          } catch {
+            return issue;
+          }
+        }));
+      }
+
+      return data;
+    },
+  },
+
+  {
+    name: 'sonar_issues_summary',
+    description: 'Get aggregated counts of issues by severity and type. Lightweight alternative to sonar_issues — returns only summary stats.',
+    schema: {
+      projectKey: z.string().optional().describe('Project key (defaults to SONARQUBE_PROJECT)'),
+      resolved: z.boolean().optional().describe('Include resolved issues in summary (default false)'),
+    },
+    handler: async ({ projectKey: pk, resolved }) => {
+      const key = resolveProjectKey({ projectKey: pk });
+      const data = await sonarGet(`/api/issues/search?componentKeys=${encode(key)}&ps=1&resolved=${String(Boolean(resolved))}`);
+      const bySeverity = {};
+      const byType = {};
+      let totalEffort = 0;
+
+      for (const issue of data.issues || []) {
+        bySeverity[issue.severity] = (bySeverity[issue.severity] || 0) + 1;
+        byType[issue.type] = (byType[issue.type] || 0) + 1;
+        totalEffort += Number(issue.effort?.replace('min', '')) || 0;
+      }
+
+      if (data.paging && data.total > data.issues?.length) {
+        const all = await sonarGet(`/api/issues/search?componentKeys=${encode(key)}&ps=500&resolved=${String(Boolean(resolved))}`);
+        for (const issue of all.issues || []) {
+          bySeverity[issue.severity] = (bySeverity[issue.severity] || 0) + 1;
+          byType[issue.type] = (byType[issue.type] || 0) + 1;
+          totalEffort += Number(issue.effort?.replace('min', '')) || 0;
+        }
+      }
+
+      return { total: data.total, by_severity: bySeverity, by_type: byType, effort_total: totalEffort };
+    },
+  },
+
+  {
+    name: 'sonar_new_issues',
+    description: 'Get issues created since the last analysis. Useful for seeing what changed after a scan.',
+    schema: {
+      projectKey: z.string().optional().describe('Project key (defaults to SONARQUBE_PROJECT)'),
+      severities: z.string().optional().describe('Comma-separated: INFO,MINOR,MAJOR,CRITICAL,BLOCKER'),
+      types: z.string().optional().describe('Comma-separated: CODE_SMELL,BUG,VULNERABILITY,SECURITY_HOTSPOT'),
+      limit: z.number().optional().describe('Max issues (default 30, max 500)'),
+      compact: z.boolean().optional().describe('Strip verbose fields for token efficiency'),
+    },
+    handler: async ({ projectKey: pk, severities, types, limit, compact }) => {
+      const key = resolveProjectKey({ projectKey: pk });
+      const analyses = await sonarGet(`/api/project_analyses/search?project=${encode(key)}&ps=2`).catch(() => null);
+      const createdAfter = analyses?.analyses?.[1]?.date || analyses?.analyses?.[0]?.date;
+
+      if (!createdAfter) {
+        return { total: 0, issues: [], message: 'No previous analysis found to compare against.' };
+      }
+
+      const params = new URLSearchParams({
+        componentKeys: key,
+        ps: String(Math.min(Number(limit) || 30, 500)),
+        s: 'SEVERITY',
+        asc: 'false',
+        createdAfter,
+      });
+      if (severities) params.set('severities', severities);
+      if (types) params.set('types', types);
+
+      const data = await sonarGet(`/api/issues/search?${params.toString()}`);
+      maybeTruncated(data);
+
+      if (compact && data.issues) {
+        data.issues = data.issues.map(({ flows, textRange, messageFormattings, codeVariants, internalTags, ...rest }) => rest);
+      }
+
+      return data;
     },
   },
 
@@ -141,6 +243,20 @@ export const TOOL_CONFIGS = [
   },
 
   {
+    name: 'sonar_set_issue_status',
+    description: 'Transition a SonarQube issue status: mark as confirmed, false positive, wontfix, or resolved. Use after reviewing an issue to track intentional decisions.',
+    schema: {
+      issueKey: z.string().describe('Issue key (e.g. the "key" field from sonar_issues)'),
+      transition: z.enum(['confirm', 'unconfirm', 'reopen', 'resolve', 'falsepositive', 'wontfix']).describe('Transition to apply'),
+    },
+    handler: async ({ issueKey, transition }) => {
+      if (!issueKey) throw new Error('issueKey is required');
+      const body = new URLSearchParams({ issue: issueKey, transition }).toString();
+      return sonarPost('/api/issues/do_transition', body);
+    },
+  },
+
+  {
     name: 'sonar_raw',
     description: 'Escape hatch — call any SonarQube Web API GET endpoint directly. Path must start with /api/. Returns the raw JSON response.',
     schema: {
@@ -182,22 +298,28 @@ export const TOOL_CONFIGS = [
 
   {
     name: 'sonar_run_analysis',
-    description: 'Run sonar-scanner analysis on the project. Requires sonar-project.properties in the project root and sonar-scanner installed.',
+    description: 'Run sonar-scanner analysis on the project. Auto-creates sonar-project.properties if missing using provided or default values.',
     schema: {
       cwd: z.string().optional().describe('Project root directory (defaults to current working directory)'),
       token: z.string().optional().describe('SonarQube token (defaults to SONARQUBE_TOKEN env var)'),
-      projectKey: z.string().optional().describe('Overrides sonar.projectKey in properties file'),
+      projectKey: z.string().optional().describe('Project key (overrides sonar.projectKey in properties, or creates one)'),
+      host: z.string().optional().describe('SonarQube server URL (defaults to SONARQUBE_URL env var)'),
+      sources: z.string().optional().describe('Source directories (default: src)'),
     },
-    handler: async ({ cwd, token, projectKey }) => {
+    handler: async ({ cwd, token, projectKey, host, sources }) => {
       const dir = cwd || process.cwd();
       const propsPath = join(dir, 'sonar-project.properties');
-      if (!existsSync(propsPath)) {
-        throw new Error(`No sonar-project.properties found in ${dir}. Create one with at minimum:\n\nsonar.host.url=http://localhost:9000\nsonar.projectKey=my_project\nsonar.sources=src`);
-      }
 
       const auth = token || process.env.SONARQUBE_TOKEN || '';
       if (!auth) {
         throw new Error('No token provided. Pass token argument or set SONARQUBE_TOKEN env var.');
+      }
+
+      if (!existsSync(propsPath)) {
+        const pk = projectKey || process.env.SONARQUBE_PROJECT || 'my_project';
+        const h = host || process.env.SONARQUBE_URL || 'http://localhost:9000';
+        const src = sources || 'src';
+        writeFileSync(propsPath, `sonar.host.url=${h}\nsonar.projectKey=${pk}\nsonar.sources=${src}\n`);
       }
 
       const scannerPath = join(dir, 'node_modules', '.bin', 'sonar-scanner');

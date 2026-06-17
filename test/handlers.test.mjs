@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { mkdtempSync, writeFileSync, existsSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { TOOL_CONFIGS } from '../src/handlers.mjs';
@@ -32,10 +32,18 @@ describe('handlers', () => {
     await assert.rejects(() => h({ path: 'api/test' }), /path must start with/);
   });
 
-  it('sonar_run_analysis throws without sonar-project.properties', async () => {
+  it('sonar_run_analysis auto-creates properties and tries to run scanner', async () => {
     const h = TOOL_CONFIGS.find((t) => t.name === 'sonar_run_analysis').handler;
     const tmp = mkdtempSync(join(tmpdir(), 'sonar-test-'));
-    await assert.rejects(() => h({ cwd: tmp }), /No sonar-project.properties found/);
+    await assert.rejects(
+      () => h({ cwd: tmp, host: 'http://test:9000', projectKey: 'test', sources: '.' }),
+      /Command failed|sonar-scanner/,
+    );
+    const propsPath = join(tmp, 'sonar-project.properties');
+    assert.ok(existsSync(propsPath), 'properties file should be auto-created');
+    const content = readFileSync(propsPath, 'utf8');
+    assert.match(content, /sonar\.projectKey=test/);
+    assert.match(content, /sonar\.host\.url=http:\/\/test:9000/);
   });
 
   it('sonar_run_analysis throws without token', async () => {
