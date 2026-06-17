@@ -164,6 +164,6 @@ describe('entry point smoke test', () => {
     assert.ok(errResp, 'should have error response');
     const parsed = JSON.parse(errResp);
     assert.ok(parsed.result.isError);
-    assert.match(parsed.result.content[0].text, /Unknown tool/);
+    assert.match(parsed.result.content[0].text, /Tool nonexistent_tool not found/);
   });
 });

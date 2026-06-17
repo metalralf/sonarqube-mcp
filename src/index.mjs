@@ -1,29 +1,19 @@
 #!/usr/bin/env node
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 
-import { TOOLS } from './tools.mjs';
-import { HANDLERS } from './handlers.mjs';
+import { z } from 'zod';
+import { TOOL_CONFIGS } from './handlers.mjs';
 import { getHostUrl, getToken, log } from './api.mjs';
 
 const server = new McpServer({ name: 'sonarqube-mcp', version: '1.0.0' }, { capabilities: { tools: {} } });
 
-server.server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: TOOLS }));
-
-server.server.setRequestHandler(CallToolRequestSchema, async (req) => {
-  const handler = HANDLERS[req.params.name];
-  if (!handler) {
-    return { content: [{ type: 'text', text: `Unknown tool: ${req.params.name}` }], isError: true };
-  }
-  try {
-    const data = await handler(req.params.arguments ?? {});
-    const text = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
-    return { content: [{ type: 'text', text }] };
-  } catch (e) {
-    return { content: [{ type: 'text', text: `Error: ${e.message}` }], isError: true };
-  }
-});
+for (const { name, description, schema, handler } of TOOL_CONFIGS) {
+  server.registerTool(name, { description, inputSchema: z.object(schema).strict() }, async (params) => {
+    const data = await handler(params);
+    return { content: [{ type: 'text', text: typeof data === 'string' ? data : JSON.stringify(data, null, 2) }] };
+  });
+}
 
 await server.connect(new StdioServerTransport());
 const defaultProject = process.env.SONARQUBE_PROJECT ?? '';

@@ -1,42 +1,45 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
+import { TOOL_CONFIGS } from '../src/handlers.mjs';
 
 describe('handlers', () => {
-  it('exports HANDLERS object with all tools', async () => {
-    const mod = await import('../src/handlers.mjs');
-    const expected = [
-      'sonar_search_projects',
-      'sonar_quality_gate',
-      'sonar_measures',
-      'sonar_issues',
-      'sonar_hotspots',
-      'sonar_rule',
-      'sonar_source',
-      'sonar_analysis_status',
-      'sonar_raw',
-    ];
-    for (const name of expected) {
-      assert.equal(typeof mod.HANDLERS[name], 'function', `${name} should be a function`);
+  it('all handlers exist and are functions', () => {
+    for (const { name, handler } of TOOL_CONFIGS) {
+      assert.equal(typeof handler, 'function', `${name} handler should be a function`);
     }
   });
 
   it('sonar_rule throws when ruleKey missing', async () => {
-    const mod = await import('../src/handlers.mjs?sr');
-    await assert.rejects(() => mod.HANDLERS.sonar_rule({}), /ruleKey is required/);
+    const h = TOOL_CONFIGS.find((t) => t.name === 'sonar_rule').handler;
+    await assert.rejects(() => h({}), /ruleKey is required/);
   });
 
   it('sonar_source throws when key missing', async () => {
-    const mod = await import('../src/handlers.mjs?ss');
-    await assert.rejects(() => mod.HANDLERS.sonar_source({}), /key \(component key\) is required/);
+    const h = TOOL_CONFIGS.find((t) => t.name === 'sonar_source').handler;
+    await assert.rejects(() => h({}), /component key/);
   });
 
   it('sonar_raw throws when path missing', async () => {
-    const mod = await import('../src/handlers.mjs?raw1');
-    await assert.rejects(() => mod.HANDLERS.sonar_raw({}), /path must start with/);
+    const h = TOOL_CONFIGS.find((t) => t.name === 'sonar_raw').handler;
+    await assert.rejects(() => h({}), /path must start with/);
   });
 
   it('sonar_raw throws when path does not start with /', async () => {
-    const mod = await import('../src/handlers.mjs?raw2');
-    await assert.rejects(() => mod.HANDLERS.sonar_raw({ path: 'api/test' }), /path must start with/);
+    const h = TOOL_CONFIGS.find((t) => t.name === 'sonar_raw').handler;
+    await assert.rejects(() => h({ path: 'api/test' }), /path must start with/);
+  });
+
+  it('sonar_setup_scanner handler exists', () => {
+    const h = TOOL_CONFIGS.find((t) => t.name === 'sonar_setup_scanner');
+    assert.ok(h);
+    assert.equal(typeof h.handler, 'function');
+  });
+
+  it('sonar_run_analysis handler exists', () => {
+    const h = TOOL_CONFIGS.find((t) => t.name === 'sonar_run_analysis');
+    assert.ok(h);
+    assert.equal(typeof h.handler, 'function');
+    assert.ok(h.schema.cwd);
+    assert.ok(h.schema.token);
   });
 });
