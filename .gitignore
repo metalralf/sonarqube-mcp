@@ -1,3 +1,5 @@
 node_modules/
 .sonar.token
 .mcp.json
+opencode.jsonc
+opencode.json
