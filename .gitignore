@@ -6,3 +6,4 @@ opencode.json
 sonar-project.properties
 .scannerwork/
 coverage/
+.code-review-graph/
