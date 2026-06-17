@@ -2,7 +2,7 @@
   "mcp": {
     "sonarqube": {
       "type": "local",
-      "command": ["node", "src/index.mjs"],
+      "command": ["npx", "-y", "github:metalralf/sonarqube-mcp"],
       "enabled": true,
       "environment": {
         "SONARQUBE_URL": "${SONARQUBE_URL}",
