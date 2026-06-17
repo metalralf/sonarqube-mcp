@@ -2,6 +2,8 @@
 
 An MCP server that exposes SonarQube data as AI agent tools.
 
+*Dogfooding: this project is checked via its own `sonar_analysis_status` tool.*
+
 Recommended to wire per-project via `.mcp.json` or `opencode.jsonc` in the project root — different projects have different SonarQube project keys, URLs, and tokens.
 
 ## Quick start
