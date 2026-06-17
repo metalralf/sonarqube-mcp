@@ -1,0 +1,17 @@
+{
+  "name": "sonarqube-mcp",
+  "version": "1.0.0",
+  "type": "module",
+  "bin": {
+    "sonarqube-mcp": "src/index.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "files": [
+    "src"
+  ],
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0"
+  }
+}
