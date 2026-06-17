@@ -78,6 +78,40 @@ For **opencode**, copy `opencode.jsonc.example` to `opencode.jsonc` in your proj
 }
 ```
 
+## Setting up SonarQube locally
+
+Spin up with Docker:
+
+```bash
+docker run -d --name sonarqube -p 9000:9000 sonarqube:community
+```
+
+Open `http://localhost:9000`, log in with `admin`/`admin`, change the password, and generate a user token (`squ_...`).
+
+Install the scanner (one-time):
+
+```bash
+pnpm add -D sonar-scanner
+```
+
+Create a `sonar-project.properties` in your project root with at minimum:
+
+```properties
+sonar.host.url=http://localhost:9000
+sonar.projectKey=my_project
+sonar.projectName=My Project
+sonar.sources=src
+sonar.javascript.lcov.reportPaths=coverage/lcov.info
+```
+
+Then run:
+
+```bash
+sonar-scanner -Dsonar.token=squ_...
+```
+
+For inline IDE feedback, install **SonarLint** in your editor and bind it to your local SonarQube instance.
+
 ## Configuration
 
 | Env var | Description |
