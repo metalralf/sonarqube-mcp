@@ -220,7 +220,7 @@ const HANDLERS = {
   },
 
   sonar_raw: async (args) => {
-    if (!args.path || !args.path.startsWith('/')) throw new Error('path must start with /');
+    if (!args.path?.startsWith('/')) throw new Error('path must start with /');
     return sonarGet(args.path);
   },
 };
