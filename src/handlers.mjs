@@ -54,12 +54,12 @@ export const TOOL_CONFIGS = [
       severities: z.string().optional().describe('Comma-separated: INFO,MINOR,MAJOR,CRITICAL,BLOCKER'),
       types: z.string().optional().describe('Comma-separated: CODE_SMELL,BUG,VULNERABILITY,SECURITY_HOTSPOT'),
       resolved: z.boolean().optional().describe('Include resolved issues (default false)'),
-      status: z.string().optional().describe('Filter by issue status: OPEN, CONFIRMED, RESOLVED, REOPENED, CLOSED (default open only)'),
+      statuses: z.string().optional().describe('Comma-separated issue statuses: OPEN,CONFIRMED,REOPENED,RESOLVED,CLOSED (default OPEN,CONFIRMED,REOPENED)'),
       limit: z.number().optional().describe('Max issues (default 30, max 500)'),
       compact: z.boolean().optional().describe('Strip verbose fields (flows, textRange, messageFormattings) for token efficiency'),
       include_source: z.boolean().optional().describe('Embed source lines for each issue (requires extra API calls)'),
     },
-    handler: async ({ projectKey: pk, severities, types, resolved, status, limit, compact, include_source }) => {
+    handler: async ({ projectKey: pk, severities, types, resolved, statuses, limit, compact, include_source }) => {
       const key = resolveProjectKey({ projectKey: pk });
       const params = new URLSearchParams({
         componentKeys: key,
@@ -68,8 +68,8 @@ export const TOOL_CONFIGS = [
         asc: 'false',
       });
 
-      if (status) {
-        params.set('status', status);
+      if (statuses) {
+        params.set('statuses', statuses);
       } else if (!resolved) {
         params.set('resolved', 'false');
       }
@@ -109,27 +109,18 @@ export const TOOL_CONFIGS = [
     },
     handler: async ({ projectKey: pk, resolved }) => {
       const key = resolveProjectKey({ projectKey: pk });
-      const data = await sonarGet(`/api/issues/search?componentKeys=${encode(key)}&ps=1&resolved=${String(Boolean(resolved))}`);
+      const data = await sonarGet(`/api/issues/search?componentKeys=${encode(key)}&ps=500&resolved=${String(Boolean(resolved))}`);
       const bySeverity = {};
       const byType = {};
-      let totalEffort = 0;
+      let effortTotal = 0;
 
       for (const issue of data.issues || []) {
         bySeverity[issue.severity] = (bySeverity[issue.severity] || 0) + 1;
         byType[issue.type] = (byType[issue.type] || 0) + 1;
-        totalEffort += Number(issue.effort?.replace('min', '')) || 0;
+        effortTotal += Number(issue.effort?.replace('min', '')) || 0;
       }
 
-      if (data.paging && data.total > data.issues?.length) {
-        const all = await sonarGet(`/api/issues/search?componentKeys=${encode(key)}&ps=500&resolved=${String(Boolean(resolved))}`);
-        for (const issue of all.issues || []) {
-          bySeverity[issue.severity] = (bySeverity[issue.severity] || 0) + 1;
-          byType[issue.type] = (byType[issue.type] || 0) + 1;
-          totalEffort += Number(issue.effort?.replace('min', '')) || 0;
-        }
-      }
-
-      return { total: data.total, by_severity: bySeverity, by_type: byType, effort_total: totalEffort };
+      return { total: data.total, by_severity: bySeverity, by_type: byType, effortTotal };
     },
   },
 

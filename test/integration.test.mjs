@@ -111,7 +111,7 @@ describe('integration', { skip: !TOKEN }, () => {
   });
 
   it('sonar_issues with status filter', async () => {
-    const res = await handler('sonar_issues')({ projectKey: 'gyartas_frontend_web', status: 'OPEN', limit: 3 });
+    const res = await handler('sonar_issues')({ projectKey: 'gyartas_frontend_web', statuses: 'OPEN', limit: 3 });
     assert.ok(res.issues);
   });
 
@@ -137,7 +137,7 @@ describe('integration', { skip: !TOKEN }, () => {
     assert.ok(res.total > 0, 'gyartas_frontend_web should have issues');
     assert.ok(Object.keys(res.by_severity).length > 0, 'by_severity should have entries');
     assert.ok(Object.keys(res.by_type).length > 0, 'by_type should have entries');
-    assert.equal(typeof res.effort_total, 'number');
+    assert.equal(typeof res.effortTotal, 'number');
   });
 
   it('sonar_set_issue_status rejects invalid issue key', async () => {
