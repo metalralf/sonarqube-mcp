@@ -14,7 +14,7 @@ const log = (m) => process.stderr.write(`[sonarqube-mcp] ${m}\n`);
 const authHeader = () =>
   AUTH_SCHEME === 'bearer'
     ? `Bearer ${TOKEN}`
-    : `Basic ${Buffer.from(`${TOKEN}:`).toString('base64')}`;
+    : `Basic ${Buffer.from(TOKEN + ':').toString('base64')}`;
 
 const sonarGet = async (path) => {
   if (!TOKEN) throw new Error('SONARQUBE_TOKEN is not set');
@@ -208,11 +208,11 @@ const HANDLERS = {
   sonar_analysis_status: async (args) => {
     const pk = projectKey(args);
     const proj = await sonarGet(`/api/projects/search?q=${encodeURIComponent(pk)}&ps=1`).catch(() => null);
-    if (!proj || !proj.components?.length) {
+    if (!proj?.components?.length) {
       return { status: 'NOT_FOUND', message: `Project "${pk}" does not exist on ${HOST}. Run sonar-scanner first:\n\n  sonar-scanner -Dsonar.login=squ_...\n\nOr create it via the SonarQube UI, then run analysis.` };
     }
     const analyses = await sonarGet(`/api/project_analyses/search?project=${encodeURIComponent(pk)}&ps=1`).catch(() => null);
-    if (!analyses || !analyses.analyses?.length) {
+    if (!analyses?.analyses?.length) {
       return { status: 'NOT_ANALYZED', message: `Project "${pk}" exists but has no analysis data. Run sonar-scanner:\n\n  sonar-scanner -Dsonar.login=squ_...` };
     }
     const last = analyses.analyses[0];
