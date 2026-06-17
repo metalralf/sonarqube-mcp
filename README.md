@@ -1,6 +1,6 @@
 # sonarqube-mcp
 
-A lightweight, zero-Docker MCP server that exposes SonarQube data as AI agent tools. Starts in ~0.1s — no JVM, no analyzer downloads.
+An MCP server that exposes SonarQube data as AI agent tools.
 
 ## Quick start
 
