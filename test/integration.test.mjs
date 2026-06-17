@@ -110,10 +110,46 @@ describe('integration', { skip: !TOKEN }, () => {
     assert.ok(res.health);
   });
 
+  it('sonar_issues with status filter', async () => {
+    const res = await handler('sonar_issues')({ projectKey: 'gyartas_frontend_web', status: 'OPEN', limit: 3 });
+    assert.ok(res.issues);
+  });
+
+  it('sonar_issues with include_source', async () => {
+    const res = await handler('sonar_issues')({ projectKey: 'gyartas_frontend_web', limit: 3, include_source: true });
+    assert.ok(res.issues);
+    if (res.issues.length > 0 && res.issues[0].line) {
+      assert.ok(res.issues[0]._source, 'should have _source when line is present');
+    }
+  });
+
+  it('sonar_new_issues on unanalyzed project returns message', async () => {
+    const pk = 'zz_test_unanalyzed_' + Date.now();
+    await fetch(`${HOST}/api/projects/create?name=${pk}&project=${pk}`, {
+      method: 'POST', headers: { authorization: `Basic ${Buffer.from(TOKEN + ':').toString('base64')}` },
+    });
+    const res = await handler('sonar_new_issues')({ projectKey: pk });
+    assert.match(res.message, /No previous analysis/);
+  });
+
+  it('sonar_issues_summary aggregation loops over issues', async () => {
+    const res = await handler('sonar_issues_summary')({ projectKey: 'gyartas_frontend_web' });
+    assert.ok(res.total > 0, 'gyartas_frontend_web should have issues');
+    assert.ok(Object.keys(res.by_severity).length > 0, 'by_severity should have entries');
+    assert.ok(Object.keys(res.by_type).length > 0, 'by_type should have entries');
+    assert.equal(typeof res.effort_total, 'number');
+  });
+
   it('sonar_set_issue_status rejects invalid issue key', async () => {
     await assert.rejects(
       () => handler('sonar_set_issue_status')({ issueKey: 'nonexistent', transition: 'confirm' }),
       /SonarQube 400|SonarQube 404/,
     );
+  });
+
+  it('sonarPost authentication validate succeeds', async () => {
+    const { sonarPost } = await import('../src/api.mjs');
+    const res = await sonarPost('/api/authentication/validate', '');
+    assert.ok(res.valid !== undefined);
   });
 });

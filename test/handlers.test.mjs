@@ -56,7 +56,25 @@ describe('handlers', () => {
     process.env.SONARQUBE_TOKEN = prev;
   });
 
-  it('sonar_setup_scanner runs in temp dir with package.json', async () => {
+  it('sonar_setup_scanner detects pnpm lock file', async () => {
+    const h = TOOL_CONFIGS.find((t) => t.name === 'sonar_setup_scanner').handler;
+    const tmp = mkdtempSync(join(tmpdir(), 'sonar-test-'));
+    writeFileSync(join(tmp, 'package.json'), '{"name":"test","version":"1.0.0"}');
+    writeFileSync(join(tmp, 'pnpm-lock.yaml'), 'lockfileVersion: 1\n');
+    const res = await h({ cwd: tmp });
+    assert.ok(res.installed);
+    assert.equal(res.packageManager, 'pnpm');
+  });
+
+  it('sonar_setup_scanner detects yarn lock file', async () => {
+    const h = TOOL_CONFIGS.find((t) => t.name === 'sonar_setup_scanner').handler;
+    const tmp = mkdtempSync(join(tmpdir(), 'sonar-test-'));
+    writeFileSync(join(tmp, 'package.json'), '{"name":"test","version":"1.0.0"}');
+    writeFileSync(join(tmp, 'yarn.lock'), '# yarn lockfile\n');
+    await assert.rejects(() => h({ cwd: tmp }), /Command failed/);
+  });
+
+  it('sonar_setup_scanner runs npm in temp dir with package.json', async () => {
     const h = TOOL_CONFIGS.find((t) => t.name === 'sonar_setup_scanner').handler;
     const tmp = mkdtempSync(join(tmpdir(), 'sonar-test-'));
     writeFileSync(join(tmp, 'package.json'), '{"name":"test","version":"1.0.0"}');
