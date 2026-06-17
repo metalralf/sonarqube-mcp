@@ -11,7 +11,17 @@
   "files": [
     "src"
   ],
+  "scripts": {
+    "test": "node --test",
+    "coverage": "c8 node --test"
+  },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0"
+  },
+  "devDependencies": {
+    "c8": "^10.1.3"
+  },
+  "devDependencies": {
+    "c8": "^11.0.0"
   }
 }

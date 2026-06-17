@@ -1,4 +1,4 @@
-import { sonarGet, orgQuery, resolveProjectKey, maybeTruncated, HOST } from './api.mjs';
+import { sonarGet, orgQuery, resolveProjectKey, maybeTruncated, getHostUrl } from './api.mjs';
 import { DEFAULT_METRIC_KEYS } from './config.mjs';
 
 const encode = (v) => encodeURIComponent(v);
@@ -62,14 +62,14 @@ export const HANDLERS = {
     const pk = resolveProjectKey(args);
     const proj = await sonarGet(`/api/projects/search?q=${encode(pk)}&ps=1`).catch(() => null);
     if (!proj?.components?.length) {
-      return { status: 'NOT_FOUND', message: `Project "${pk}" does not exist on ${HOST}. Run sonar-scanner first:\n\n  sonar-scanner -Dsonar.login=squ_...\n\nOr create it via the SonarQube UI, then run analysis.` };
+      return { status: 'NOT_FOUND', message: `Project "${pk}" does not exist on ${getHostUrl()}. Run sonar-scanner first:\n\n  sonar-scanner -Dsonar.login=squ_...\n\nOr create it via the SonarQube UI, then run analysis.` };
     }
     const analyses = await sonarGet(`/api/project_analyses/search?project=${encode(pk)}&ps=1`).catch(() => null);
     if (!analyses?.analyses?.length) {
       return { status: 'NOT_ANALYZED', message: `Project "${pk}" exists but has no analysis data. Run sonar-scanner:\n\n  sonar-scanner -Dsonar.login=squ_...` };
     }
     const last = analyses.analyses[0];
-    return { status: 'ANALYZED', lastAnalysis: last.date, projectUrl: `${HOST}/dashboard?id=${encode(pk)}`, message: `Project "${pk}" was last analyzed on ${last.date}.` };
+    return { status: 'ANALYZED', lastAnalysis: last.date, projectUrl: `${getHostUrl()}/dashboard?id=${encode(pk)}`, message: `Project "${pk}" was last analyzed on ${last.date}.` };
   },
 
   sonar_raw: async (args) => {

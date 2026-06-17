@@ -5,8 +5,7 @@ import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprot
 
 import { TOOLS } from './tools.mjs';
 import { HANDLERS } from './handlers.mjs';
-import { HOST, log } from './api.mjs';
-import { DEFAULT_PROJECT, TOKEN } from './config.mjs';
+import { getHostUrl, getToken, log } from './api.mjs';
 
 const server = new McpServer({ name: 'sonarqube-mcp', version: '1.0.0' }, { capabilities: { tools: {} } });
 
@@ -27,4 +26,5 @@ server.server.setRequestHandler(CallToolRequestSchema, async (req) => {
 });
 
 await server.connect(new StdioServerTransport());
-log(`ready — host=${HOST} project=${DEFAULT_PROJECT || '(none)'} token=${TOKEN ? 'set' : 'MISSING'}`);
+const defaultProject = process.env.SONARQUBE_PROJECT ?? '';
+log(`ready — host=${getHostUrl()} project=${defaultProject || '(none)'} token=${getToken() ? 'set' : 'MISSING'}`);

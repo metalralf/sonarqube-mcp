@@ -4,3 +4,4 @@ node_modules/
 opencode.jsonc
 opencode.json
 sonar-project.properties
+coverage/

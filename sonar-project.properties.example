@@ -4,4 +4,6 @@ sonar.projectName=sonarqube-mcp
 sonar.host.url=http://localhost:9000
 
 sonar.sources=src
+sonar.tests=test
 sonar.sourceEncoding=UTF-8
+sonar.javascript.lcov.reportPaths=coverage/lcov.info
