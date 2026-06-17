@@ -138,6 +138,35 @@ Or manually, copy `sonar-project.properties.example` to `sonar-project.propertie
 pnpm exec sonar-scanner -Dsonar.token=squ_...
 ```
 
+## Agent usage guidelines
+
+When acting as an AI agent with these tools available, follow this order:
+
+1. **`sonar_analysis_status`** — first, check if the project has ever been analyzed. If `NOT_FOUND` or `NOT_ANALYZED`, guide the user to run `sonar_setup_scanner` + `sonar_run_analysis`.
+2. **`sonar_quality_gate`** — check if the project passes its quality gate. If `ERROR`, inspect failing conditions to understand what's blocking.
+3. **`sonar_measures`** — get the high-level metrics (coverage, bugs, smells, ratings).
+4. **`sonar_issues`** — drill into specific issues, filtered by severity or type. Start with `CRITICAL`/`BLOCKER`.
+5. **`sonar_rule`** — when you find an issue you don't understand, look up the rule for a plain-English explanation.
+6. **`sonar_source`** — view the flagged source code around an issue to understand the context.
+7. **`sonar_hotspots`** — review security hotspots (only works with `squ_` user tokens).
+
+If analysis data is missing or the project isn't even on the server, prompt the user to run:
+
+```bash
+# Install scanner
+npx sonar_setup_scanner or use the tool
+
+# Generate coverage
+npx c8 node --test
+
+# Run analysis
+npx sonar_run_analysis
+```
+
+Or if the tools are available, let the agent orchestrate the whole flow automatically.
+
+**Token tip**: If `sonar_hotspots` returns a 403, tell the user they need a **user token** (`squ_...`), not an analysis token. The user token can do everything the analysis token can plus hotspots.
+
 ### Token types
 
 | Type | Prefix | Hotspots? |
