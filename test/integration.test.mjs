@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { describe, it } from 'node:test';
+import { describe, it, before } from 'node:test';
 import { getHostUrl, getToken, sonarGet } from '../src/api.mjs';
 
 const TOKEN = getToken();
@@ -8,6 +8,8 @@ const HOST = getHostUrl();
 import { TOOL_CONFIGS } from '../src/handlers.mjs';
 
 const handler = (name) => TOOL_CONFIGS.find((t) => t.name === name).handler;
+
+const TEST_UNANALYZED = 'zz_test_unanalyzed_' + Date.now();
 
 describe('integration', { skip: !TOKEN }, () => {
   it('sonarGet can reach the server', async () => {
@@ -69,6 +71,18 @@ describe('integration', { skip: !TOKEN }, () => {
     const res = await handler('sonar_analysis_status')({ projectKey: 'zzz_nonexistent_98765' });
     assert.equal(res.status, 'NOT_FOUND');
     assert.match(res.message, /does not exist/);
+  });
+
+  it('sonar_analysis_status returns NOT_ANALYZED for an unanalyzed project', async () => {
+    const res = await fetch(`${HOST}/api/projects/create?name=${TEST_UNANALYZED}&project=${TEST_UNANALYZED}`, {
+      method: 'POST',
+      headers: { authorization: `Basic ${Buffer.from(TOKEN + ':').toString('base64')}` },
+    });
+    if (!res.ok) return; // skip if token lacks project creation permission
+
+    const status = await handler('sonar_analysis_status')({ projectKey: TEST_UNANALYZED });
+    assert.equal(status.status, 'NOT_ANALYZED');
+    assert.match(status.message, /no analysis data/);
   });
 
   it('sonar_raw calls arbitrary endpoint', async () => {
