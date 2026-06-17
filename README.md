@@ -34,7 +34,7 @@ An MCP server that exposes SonarQube data as AI agent tools.
 | `sonar_source` | View flagged source lines |
 | `sonar_raw` | Escape hatch — any GET endpoint |
 
-Or copy `.mcp.json.example` to `.mcp.json` in your project root (openocode reads it automatically):
+For Claude Code or other MCP clients, copy `.mcp.json.example` to `.mcp.json` in your project root:
 
 ```json
 {
