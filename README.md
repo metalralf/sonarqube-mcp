@@ -85,6 +85,20 @@ For **opencode**, copy `opencode.jsonc.example` to `opencode.jsonc` in your proj
 | `SONARQUBE_ORGANIZATION` | SonarCloud org key |
 | `SONARQUBE_AUTH_SCHEME` | `basic` (default) or `bearer` |
 
+## Local analysis
+
+Run SonarQube analysis on this project. Copy `sonar-project.properties.example` to `sonar-project.properties` in the project root, then:
+
+```bash
+sonar-scanner -Dsonar.login=squ_...
+```
+
+Or with pnpm:
+
+```bash
+pnpm exec sonar-scanner -Dsonar.login=squ_...
+```
+
 ### Token types
 
 | Type | Prefix | Hotspots? |
