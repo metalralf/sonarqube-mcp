@@ -1,7 +1,7 @@
 sonar.projectKey=sonarcube_mcp
 sonar.projectName=sonarqube-mcp
 
-sonar.host.url=http://localhost:9111
+sonar.host.url=http://localhost:9000
 
 sonar.sources=src
 sonar.sourceEncoding=UTF-8
