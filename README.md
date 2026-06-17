@@ -34,7 +34,27 @@ An MCP server that exposes SonarQube data as AI agent tools.
 | `sonar_source` | View flagged source lines |
 | `sonar_raw` | Escape hatch — any GET endpoint |
 
-For Claude Code or other MCP clients, copy `.mcp.json.example` to `.mcp.json` in your project root:
+For **opencode**, copy `opencode.jsonc.example` to `opencode.jsonc` in your project root:
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "sonarqube": {
+      "type": "local",
+      "command": ["npx", "-y", "github:metalralf/sonarqube-mcp"],
+      "enabled": true,
+      "environment": {
+        "SONARQUBE_URL": "${SONARQUBE_URL}",
+        "SONARQUBE_TOKEN": "${SONARQUBE_TOKEN}",
+        "SONARQUBE_PROJECT": "${SONARQUBE_PROJECT}"
+      }
+    }
+  }
+}
+```
+
+For **Claude Code** or other MCP clients, copy `.mcp.json.example` to `.mcp.json` in your project root:
 
 ```json
 {
