@@ -52,4 +52,11 @@ describe('api', () => {
     mod.maybeTruncated(data);
     assert.equal(data._truncated, false);
   });
+
+  it('maybeTruncated returns data unchanged without paging', () => {
+    const data = { foo: 'bar' };
+    const result = mod.maybeTruncated(data);
+    assert.equal(result, data);
+    assert.equal(result._truncated, undefined);
+  });
 });
