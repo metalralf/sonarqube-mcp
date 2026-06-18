@@ -34,7 +34,7 @@ This project works with **any SonarQube edition** — Cloud, Developer, Enterpri
 ## Tools
 
 | Tool | Purpose |
-|---|---|---|
+|---|---|
 | `sonar_search_projects` | Discover project keys |
 | `sonar_quality_gate` | Gate pass/fail + failing conditions |
 | `sonar_measures` | Bugs, smells, coverage, ratings, ncloc, dup |
