@@ -7,6 +7,8 @@ import { z } from 'zod';
 import { TOOL_CONFIGS } from './handlers.mjs';
 import { getHostUrl, getToken, log } from './api.mjs';
 
+const transport = process.env.SONARQUBE_TRANSPORT || 'stdio';
+
 const server = new McpServer({ name: 'sonarqube-mcp', version: '1.0.0' }, { capabilities: { tools: {} } });
 
 for (const { name, description, schema, handler } of TOOL_CONFIGS) {
@@ -16,6 +18,11 @@ for (const { name, description, schema, handler } of TOOL_CONFIGS) {
   });
 }
 
-await server.connect(new StdioServerTransport());
-const defaultProject = process.env.SONARQUBE_PROJECT ?? '';
-log(`ready — host=${getHostUrl()} project=${defaultProject || '(none)'} token=${getToken() ? 'set' : 'MISSING'}`);
+if (transport === 'http' || transport === 'https') {
+  const { startHttpServer } = await import('./http-server.mjs');
+  await startHttpServer(TOOL_CONFIGS);
+} else {
+  await server.connect(new StdioServerTransport());
+  const defaultProject = process.env.SONARQUBE_PROJECT ?? '';
+  log(`ready — host=${getHostUrl()} project=${defaultProject || '(none)'} token=${getToken() ? 'set' : 'MISSING'}`);
+}
