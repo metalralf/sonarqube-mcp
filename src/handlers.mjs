@@ -443,6 +443,18 @@ export const TOOL_CONFIGS = [
   },
 
   {
+    name: 'sonar_file_coverage_details',
+    description: 'Get detailed coverage info for a specific file: line/condition coverage %, uncovered lines and conditions, and total lines/conditions to cover.',
+    schema: {
+      key: z.string().describe('Full component key (e.g. my-project:src/file.ts)'),
+    },
+    handler: async ({ key }) => {
+      if (!key) throw new Error('key (component key) is required');
+      return sonarGet(`/api/measures/component?component=${encode(key)}&metricKeys=coverage,uncovered_lines,uncovered_conditions,lines_to_cover,conditions_to_cover,branch_coverage`);
+    },
+  },
+
+  {
     name: 'sonar_list_branches',
     description: 'List branches for a project with their analysis dates and quality gate status.',
     schema: {

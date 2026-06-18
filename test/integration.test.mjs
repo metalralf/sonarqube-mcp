@@ -232,6 +232,14 @@ describe('integration', { skip: !TOKEN }, () => {
     assert.ok(Array.isArray(res.scm));
   });
 
+  it('sonar_file_coverage_details returns coverage for a file', async () => {
+    const res = await handler('sonar_file_coverage_details')({ key: 'sonarcube_mcp:src/handlers.mjs' });
+    assert.ok(res.component);
+    assert.equal(res.component.qualifier, 'FIL');
+    assert.ok(res.component.measures);
+    assert.ok(res.component.measures.find((m) => m.metric === 'coverage'));
+  });
+
   it('sonar_coverage_files returns files below threshold', async () => {
     const res = await handler('sonar_coverage_files')({ projectKey: 'sonarcube_mcp', threshold: 100 });
     assert.equal(typeof res.total, 'number');
