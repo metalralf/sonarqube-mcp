@@ -300,13 +300,18 @@ const ALL_TOOLS = [
     return sonarGet(`/api/metrics/search?${params.toString()}`);
   }),
 
-  tool('sonar_source', 'View source code lines for a SonarQube file component. Useful to see the context around a flagged issue or hotspot.', {
+  tool('sonar_source', 'View source code lines for a SonarQube file component. Useful to see context around a flagged issue or hotspot. Optionally highlight uncovered lines.', {
     key: componentKey,
     from: z.number().optional().describe('Starting line number (1-indexed)'),
     to: z.number().optional().describe('Ending line number (inclusive)'),
-  }, async ({ key, from, to }) => {
+    highlight_uncovered: z.boolean().optional().describe('When true, each line gets a _uncovered boolean field indicating if it has 0 test hits'),
+  }, async ({ key, from, to, highlight_uncovered }) => {
     requireKey(key);
-    return sonarGet(`/api/sources/lines?${componentParams(key, from, to).toString()}`);
+    const data = await sonarGet(`/api/sources/lines?${componentParams(key, from, to).toString()}`);
+    if (highlight_uncovered && data.sources) {
+      data.sources = data.sources.map((l) => ({ ...l, _uncovered: l.utLineHits === 0 }));
+    }
+    return data;
   }),
 
   tool('sonar_list_webhooks', 'List webhooks configured for a project or globally. Useful to verify CI/CD integration with SonarQube.', {

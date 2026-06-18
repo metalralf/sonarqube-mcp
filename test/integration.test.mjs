@@ -117,6 +117,13 @@ describe('integration', { skip: !TOKEN }, () => {
     assert.equal(res.rule.key, 'javascript:S6582');
   });
 
+  it('sonar_source with highlight_uncovered annotates lines', async () => {
+    const res = await handler('sonar_source')({ key: 'sonarcube_mcp:src/index.mjs', from: 1, to: 5, highlight_uncovered: true });
+    assert.ok(res.sources);
+    assert.ok(res.sources.length > 0);
+    assert.ok(res.sources[0]._uncovered !== undefined, 'should have _uncovered field');
+  });
+
   it('sonar_source returns source lines', async () => {
     const res = await handler('sonar_source')({ key: 'sonarcube_mcp:src/index.mjs' });
     assert.ok(res.sources);
