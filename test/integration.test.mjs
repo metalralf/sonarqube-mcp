@@ -165,6 +165,12 @@ describe('integration', { skip: !TOKEN }, () => {
     assert.ok(res.metrics[0].name);
   });
 
+  it('sonar_ping returns pong', async () => {
+    const res = await handler('sonar_ping')({});
+    assert.ok(res.pong);
+    assert.ok(res.health);
+  });
+
   it('sonar_raw calls arbitrary endpoint', async () => {
     const res = await handler('sonar_raw')({ path: '/api/system/health' });
     assert.ok(res.health);

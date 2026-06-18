@@ -73,6 +73,20 @@ export const TOOL_CONFIGS = [
   },
 
   {
+    name: 'sonar_ping',
+    description: 'Ping the SonarQube server to check if it is reachable and responsive. Returns "pong" and the server health status (GREEN/YELLOW/RED).',
+    schema: {
+    },
+    handler: async () => {
+      const health = await sonarCheckServer();
+      if (!health.reachable) {
+        return { status: 'UNREACHABLE', message: `Cannot reach SonarQube at ${getHostUrl()}`, hint: health.hint };
+      }
+      return { pong: true, health: health.health || 'unknown' };
+    },
+  },
+
+  {
     name: 'sonar_quality_gate',
     description: 'Get the SonarQube quality gate status (OK/ERROR) for a project, including each failing condition with metric, actual value, and threshold.',
     schema: {

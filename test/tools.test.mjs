@@ -21,6 +21,7 @@ describe('tools', () => {
     'sonar_list_pull_requests',
     'sonar_measures',
     'sonar_new_issues',
+    'sonar_ping',
     'sonar_quality_gate',
     'sonar_raw',
     'sonar_rule',
