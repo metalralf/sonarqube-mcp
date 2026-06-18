@@ -17,9 +17,9 @@ const freshConfigs = async (env) => {
 };
 
 describe('toolset filtering', () => {
-  it('exposes all 31 tools by default', async () => {
+  it('exposes all 34 tools by default', async () => {
     const configs = await freshConfigs({});
-    assert.equal(configs.length, 31);
+    assert.equal(configs.length, 34);
     const names = configs.map((t) => t.name);
     assert.ok(names.includes('sonar_issues'));
     assert.ok(names.includes('sonar_hotspots'));

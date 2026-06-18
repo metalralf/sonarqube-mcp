@@ -1,6 +1,6 @@
 # sonarqube-mcp
 
-An MCP server that exposes SonarQube data as AI agent tools. **31 tools** covering projects, issues, quality gates, hotspots, coverage, SCM, webhooks, worst-metric ranking, and more.
+An MCP server that exposes SonarQube data as AI agent tools. **34 tools** covering projects, issues, quality gates, hotspots, coverage, SCM, webhooks, worst-metric ranking, and more.
 
 *Dogfooding: this project is checked via its own tools.*
 
@@ -34,13 +34,15 @@ This project is the **lightweight Node.js alternative**: covers the same REST AP
 }
 ```
 
-## Tools (31)
+## Tools (34)
 
 ### Discovery & Status
 
 | Tool | Purpose |
 |---|---|
 | `sonar_search_projects` | Discover project keys |
+| `sonar_project_details` | Deep-dive into a single project (name, description, URL, analysis date) |
+| `sonar_projects_create` | Create a new SonarQube project (requires admin) |
 | `sonar_analysis_status` | Check if a project has been analyzed, with next steps |
 | `sonar_summary` | Aggregated project health in one call (quality gate + metrics + issues + branches) |
 | `sonar_ping` | Ping server health — returns `pong` + status |
@@ -62,6 +64,7 @@ This project is the **lightweight Node.js alternative**: covers the same REST AP
 | `sonar_issues_summary` | Aggregated counts by severity, type, and effort |
 | `sonar_new_issues` | Issues created since the last analysis (zero-tolerance delta) |
 | `sonar_set_issue_status` | Mark issues as confirmed, false positive, wontfix, resolved |
+| `sonar_issues_bulk_transition` | Transition multiple issues at once |
 
 ### Security Hotspots
 

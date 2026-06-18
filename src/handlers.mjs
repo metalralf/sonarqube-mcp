@@ -38,8 +38,8 @@ const measureSearch = (metricKey, valueKey, defaultThresh, descend) => async ({ 
  */
 
 const TOOL_CATEGORIES = {
-  projects: ['sonar_search_projects', 'sonar_summary', 'sonar_analysis_status'],
-  issues: ['sonar_issues', 'sonar_issues_summary', 'sonar_new_issues', 'sonar_set_issue_status'],
+  projects: ['sonar_search_projects', 'sonar_summary', 'sonar_analysis_status', 'sonar_project_details', 'sonar_projects_create'],
+  issues: ['sonar_issues', 'sonar_issues_summary', 'sonar_new_issues', 'sonar_set_issue_status', 'sonar_issues_bulk_transition'],
   hotspots: ['sonar_hotspots', 'sonar_hotspot_details', 'sonar_change_hotspot_status'],
   quality: ['sonar_quality_gate', 'sonar_list_quality_gates', 'sonar_measures', 'sonar_search_metrics'],
   coverage: ['sonar_coverage_files', 'sonar_file_coverage_details'],
@@ -68,6 +68,32 @@ const filterTools = (/** @type {Array<any>} */ all) => {
 };
 
 const ALL_TOOLS = [
+  tool('sonar_projects_create', 'Create a new project in SonarQube. Requires admin permissions.', {
+    projectKey: z.string().describe('Key for the new project (e.g. my_new_project)'),
+    name: z.string().optional().describe('Display name (defaults to projectKey)'),
+  }, async ({ projectKey: pk, name }) => {
+    const params = new URLSearchParams({ project: pk, name: name || pk });
+    return sonarPost('/api/projects/create', params.toString());
+  }),
+
+  tool('sonar_project_details', 'Get detailed information about a project: description, URL, key, qualifier, and analysis dates.', {
+    projectKey,
+  }, async ({ projectKey: pk }) => {
+    const key = resolveProjectKey({ projectKey: pk });
+    const [comp, analyses] = await Promise.all([
+      sonarGet(`/api/components/show?component=${encode(key)}`).catch(() => null),
+      sonarGet(`/api/project_analyses/search?project=${encode(key)}&ps=1`).catch(() => null),
+    ]);
+    return {
+      key,
+      name: comp?.component?.name || null,
+      description: comp?.component?.description || null,
+      qualifier: comp?.component?.qualifier || null,
+      analysisDate: analyses?.analyses?.[0]?.date || null,
+      projectUrl: `${getHostUrl()}/dashboard?id=${encode(key)}`,
+    };
+  }),
+
   tool('sonar_search_projects', 'Search/find SonarQube project keys. Use when no project is configured or to discover available projects.', {
     query: z.string().optional().describe('Optional search query to filter projects by name/key'),
     limit: maxResults,
@@ -353,6 +379,15 @@ const ALL_TOOLS = [
     return { status: 'ANALYZED', lastAnalysis: last.date, projectUrl: `${getHostUrl()}/dashboard?id=${encode(key)}`, message: `Project "${key}" was last analyzed on ${last.date}.` };
   }),
 
+  tool('sonar_issues_bulk_transition', 'Transition multiple issues at once: mark as confirmed, false positive, wontfix, or resolved. Use after reviewing issues to track intentional decisions.', {
+    issueKeys: z.array(z.string()).describe('Array of issue keys (e.g. the "key" field from sonar_issues)'),
+    transition: z.enum(['confirm', 'unconfirm', 'reopen', 'resolve', 'falsepositive', 'wontfix']).describe('Transition to apply to all specified issues'),
+  }, async ({ issueKeys, transition }) => {
+    if (!issueKeys?.length) throw new Error('issueKeys array is required');
+    const body = new URLSearchParams({ issues: issueKeys.join(','), transition }).toString();
+    return sonarPost('/api/issues/bulk_change', body);
+  }),
+
   tool('sonar_set_issue_status', 'Transition a SonarQube issue status: mark as confirmed, false positive, wontfix, or resolved. Use after reviewing an issue to track intentional decisions.', {
     issueKey: z.string().describe('Issue key (e.g. the "key" field from sonar_issues)'),
     transition: z.enum(['confirm', 'unconfirm', 'reopen', 'resolve', 'falsepositive', 'wontfix']).describe('Transition to apply'),
@@ -362,11 +397,18 @@ const ALL_TOOLS = [
     return sonarPost('/api/issues/do_transition', body);
   }),
 
-  tool('sonar_raw', 'Escape hatch — call any SonarQube Web API GET endpoint directly. Path must start with /api/. Returns the raw JSON response.', {
+  tool('sonar_raw', 'Escape hatch — call any SonarQube Web API GET endpoint directly. Path must start with /api/. Returns the raw JSON response.',
+    {
     path: z.string().describe('API path starting with /api/ (e.g. /api/system/health)'),
   }, async ({ path }) => {
     if (!path?.startsWith('/')) throw new Error('path must start with /');
-    return sonarGet(path);
+    try {
+      return await sonarGet(path);
+    } catch (e) {
+      const msg = (/** @type {Error} */ (e)).message;
+      const hint = msg.includes('400') || msg.includes('404') ? `\n\nTip: sonar_raw calls GET ${path}. Missing query params? Try:\n  sonar_raw path=/api/...\n  sonar_raw path=/api/measures/component?component=my_project&metricKeys=coverage` : '';
+      throw new Error(msg + hint);
+    }
   }),
 
   tool('sonar_setup_scanner', 'Install sonar-scanner as a devDependency in the project. Detects pnpm, yarn, or npm from lock files.', {

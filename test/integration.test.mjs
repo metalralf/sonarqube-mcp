@@ -35,6 +35,35 @@ describe('integration', { skip: !TOKEN }, () => {
     assert.ok(res.health);
   });
 
+  it('sonar_project_details returns project info', async () => {
+    const res = await handler('sonar_project_details')({ projectKey: 'sonarcube_mcp' });
+    assert.ok(res.key);
+    assert.ok(res.name);
+    assert.ok(res.projectUrl);
+  });
+
+  it('sonar_projects_create creates and deletes a project', async () => {
+    const pk = 'zz_test_pc_' + Date.now() + Math.random().toString(36).slice(2, 6);
+    const res = await handler('sonar_projects_create')({ projectKey: pk, name: 'Temp Test' });
+    assert.ok(res.project);
+    assert.equal(res.project.key, pk);
+    await sonarPost('/api/projects/delete', new URLSearchParams({ project: pk }).toString());
+  });
+
+  it('sonar_issues_bulk_transition rejects missing keys', async () => {
+    await assert.rejects(
+      () => handler('sonar_issues_bulk_transition')({ issueKeys: [], transition: 'resolve' }),
+      /issueKeys array is required/,
+    );
+  });
+
+  it('sonar_issues_bulk_transition rejects nonexistent keys', async () => {
+    await assert.rejects(
+      () => handler('sonar_issues_bulk_transition')({ issueKeys: ['nonexistent'], transition: 'resolve' }),
+      /SonarQube 400/,
+    );
+  });
+
   it('sonar_summary returns aggregated project health', async () => {
     const res = await handler('sonar_summary')({ projectKey: 'sonarcube_mcp' });
     assert.equal(res.projectKey, 'sonarcube_mcp');
