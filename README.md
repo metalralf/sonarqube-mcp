@@ -14,15 +14,15 @@ This project is the **lightweight Node.js alternative**: covers the same REST AP
 
 ## Quick start
 
-> Pin to a specific version: `["npx", "-y", "github:metalralf/sonarqube-mcp@v1.1.1"]`  
-> Omit `@v1.1.1` for the latest (unstable) development version.
+> Pin to a specific version: `["npx", "-y", "github:metalralf/sonarqube-mcp@v1.2.0"]`  
+> Omit `@v1.2.0` for the latest (unstable) development version.
 
 ```json
 {
   "mcp": {
     "sonarqube": {
       "type": "local",
-      "command": ["npx", "-y", "github:metalralf/sonarqube-mcp@v1.1.1"],
+      "command": ["npx", "-y", "github:metalralf/sonarqube-mcp@v1.2.0"],
       "enabled": true,
       "environment": {
         "SONARQUBE_URL": "http://localhost:9000",
@@ -262,7 +262,7 @@ pnpm install
 
 | Branch | Purpose | Version |
 |---|---|---|
-| `main` | Stable releases | Tagged (`v1.1.1`) |
+| `main` | Stable releases | Tagged (`v1.2.0`) |
 | `develop` | Daily development | `1.x.0-dev` |
 | `feature/*` | New tools/features | — |
 
@@ -270,9 +270,9 @@ pnpm install
 
 | Change scope | Bump | Example |
 |---|---|---|
-| 1-2 small tools, fixes | `patch` | `v1.1.1` → `v1.1.2` |
-| 3+ new tools, features | `minor` | `v1.1.1` → `v1.2.0` |
-| Breaking changes | `major` | `v1.1.1` → `v2.0.0` |
+| 1-2 small tools, fixes | `patch` | `v1.2.0` → `v1.1.2` |
+| 3+ new tools, features | `minor` | `v1.2.0` → `v1.2.0` |
+| Breaking changes | `major` | `v1.2.0` → `v2.0.0` |
 
 The agent proposes the version when merging `develop` → `main`.
 
