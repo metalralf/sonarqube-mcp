@@ -166,6 +166,12 @@ describe('integration', { skip: !TOKEN }, () => {
     );
   });
 
+  it('sonar_list_webhooks returns webhooks for project', async () => {
+    const res = await handler('sonar_list_webhooks')({ projectKey: 'sonarcube_mcp' });
+    assert.ok(res.webhooks !== undefined);
+    assert.ok(Array.isArray(res.webhooks));
+  });
+
   it('sonar_list_branches returns branches', async () => {
     const res = await handler('sonar_list_branches')({ projectKey: 'sonarcube_mcp' });
     assert.ok(Array.isArray(res));
