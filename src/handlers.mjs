@@ -37,8 +37,35 @@ const measureSearch = (metricKey, valueKey, defaultThresh, descend) => async ({ 
  * @returns {Promise<any>}
  */
 
-/** @type {Array<{ name: string; description: string; schema: Record<string, import('zod').ZodTypeAny>; handler: ToolHandler }>} */
-export const TOOL_CONFIGS = [
+const TOOL_CATEGORIES = {
+  projects: ['sonar_search_projects', 'sonar_summary', 'sonar_analysis_status'],
+  issues: ['sonar_issues', 'sonar_issues_summary', 'sonar_new_issues', 'sonar_set_issue_status'],
+  hotspots: ['sonar_hotspots', 'sonar_hotspot_details', 'sonar_change_hotspot_status'],
+  quality: ['sonar_quality_gate', 'sonar_list_quality_gates', 'sonar_measures', 'sonar_search_metrics'],
+  coverage: ['sonar_coverage_files', 'sonar_file_coverage_details'],
+  duplications: ['sonar_search_duplicated_files', 'sonar_duplications'],
+  scm: ['sonar_source', 'sonar_scm_info'],
+  branches: ['sonar_list_branches', 'sonar_list_pull_requests'],
+  admin: ['sonar_list_webhooks', 'sonar_list_languages', 'sonar_ping', 'sonar_setup_scanner', 'sonar_run_analysis'],
+  rules: ['sonar_rule'],
+  raw: ['sonar_raw'],
+};
+
+const READ_ONLY_TOOLS = new Set(['sonar_set_issue_status', 'sonar_change_hotspot_status', 'sonar_run_analysis', 'sonar_setup_scanner']);
+
+const filterTools = (/** @type {Array<any>} */ all) => {
+  const envToolsets = process.env.SONARQUBE_TOOLSETS || '';
+  const readOnly = process.env.SONARQUBE_READ_ONLY === 'true';
+  if (!envToolsets && !readOnly) return all;
+  if (envToolsets) {
+    const cats = envToolsets.split(',').map((s) => s.trim());
+    const enabled = new Set(cats.flatMap((c) => TOOL_CATEGORIES[c] || []));
+    if (enabled.size) return all.filter((t) => enabled.has(t.name) && !(readOnly && READ_ONLY_TOOLS.has(t.name)));
+  }
+  return readOnly ? all.filter((t) => !READ_ONLY_TOOLS.has(t.name)) : all;
+};
+
+const ALL_TOOLS = [
   tool('sonar_search_projects', 'Search/find SonarQube project keys. Use when no project is configured or to discover available projects.', {
     query: z.string().optional().describe('Optional search query to filter projects by name/key'),
     limit: maxResults,
@@ -431,3 +458,5 @@ export const TOOL_CONFIGS = [
     return sonarGet(`/api/duplications/show?key=${encode(key)}`);
   }),
 ];
+
+export const TOOL_CONFIGS = filterTools(ALL_TOOLS);

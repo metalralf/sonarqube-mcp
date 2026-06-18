@@ -1,0 +1,472 @@
+- generic [active] [ref=e1]:
+  - link "Ugrás a fő tartalomra" [ref=e2] [cursor=pointer]:
+    - /url: "#main-content"
+    - generic [ref=e4]: Ugrás a fő tartalomra
+  - generic [ref=e6]:
+    - generic:
+      - generic [ref=e7]:
+        - generic: sonarqube mcp – Reddit-keresés
+      - banner [ref=e10]:
+        - navigation [ref=e11]:
+          - generic [ref=e12]:
+            - button "Menü megnyitása" [ref=e16] [cursor=pointer]:
+              - img [ref=e19]
+              - generic [ref=e21]:
+                - generic: Menü megnyitása
+            - generic:
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - link "Kezdőlap":
+                        - /url: https://www.reddit.com/
+          - search [ref=e31]:
+            - generic [ref=e33]:
+              - img [ref=e36]
+              - textbox "Keresés törlése" [ref=e40]:
+                - /placeholder: Keresés a Redditen
+                - text: sonarqube mcp
+              - button "Keresés törlése" [ref=e42] [cursor=pointer]:
+                - img [ref=e45]
+                - generic [ref=e48]:
+                  - generic: Keresés törlése
+          - generic [ref=e49]:
+            - link "Bejelentkezés" [ref=e53] [cursor=pointer]:
+              - /url: https://www.reddit.com/login/
+              - generic [ref=e55]: Bejelentkezés
+            - button "Felhasználói menü kibontása" [ref=e60] [cursor=pointer]:
+              - img [ref=e63]
+              - generic [ref=e65]:
+                - generic: Felhasználói menü kibontása
+      - generic "sonarqube mcp – Reddit-keresés"
+      - generic [ref=e70]:
+        - generic [ref=e72]:
+          - generic [ref=e75]:
+            - tablist [ref=e76]:
+              - tab "Posztok" [selected] [ref=e77]:
+                - button "Posztok" [ref=e78] [cursor=pointer]:
+                  - generic [ref=e82]: Posztok
+              - tab "Közösségek" [ref=e83]:
+                - link "Közösségek" [ref=e84] [cursor=pointer]:
+                  - /url: /search/?q=sonarqube+mcp&type=communities&iId=b7440fd0-b85a-4045-808a-dc1f686ef59a
+                  - generic [ref=e89]: Közösségek
+              - tab "Hozzászólások" [ref=e90]:
+                - link "Hozzászólások" [ref=e91] [cursor=pointer]:
+                  - /url: /search/?q=sonarqube+mcp&type=comments&iId=b7440fd0-b85a-4045-808a-dc1f686ef59a
+                  - generic [ref=e96]: Hozzászólások
+              - tab "Média" [ref=e97]:
+                - link "Média" [ref=e98] [cursor=pointer]:
+                  - /url: /search/?q=sonarqube+mcp&type=media&iId=b7440fd0-b85a-4045-808a-dc1f686ef59a
+                  - generic [ref=e103]: Média
+              - tab "Profilok" [ref=e104]:
+                - link "Profilok" [ref=e105] [cursor=pointer]:
+                  - /url: /search/?q=sonarqube+mcp&type=people&iId=b7440fd0-b85a-4045-808a-dc1f686ef59a
+                  - generic [ref=e110]: Profilok
+            - button "forward" [ref=e112] [cursor=pointer]:
+              - img [ref=e115]
+              - generic [ref=e117]:
+                - generic: forward
+            - button "back" [ref=e119] [cursor=pointer]:
+              - img [ref=e122]
+              - generic [ref=e124]:
+                - generic: back
+          - generic:
+            - generic:
+              - tabpanel
+          - button "Újak" [ref=e129] [cursor=pointer]:
+            - generic [ref=e132]: Újak
+        - generic [ref=e137]:
+          - main [ref=e138]:
+            - generic [ref=e139]:
+              - generic [ref=e141]:
+                - generic:
+                  - heading "How to Fix 5,000+ SonarQube Technical Debt Issues with AI" [level=2]:
+                    - link "How to Fix 5,000+ SonarQube Technical Debt Issues with AI" [ref=e142] [cursor=pointer]:
+                      - /url: /user/eleks/comments/1u2tjxz/how_to_fix_5000_sonarqube_technical_debt_issues/
+                      - generic [ref=e143]:
+                        - generic: How to Fix 5,000+ SonarQube Technical Debt Issues with AI
+                - generic [ref=e144]:
+                  - generic [ref=e147]:
+                    - link "u/eleks avatarja u/eleks" [ref=e150] [cursor=pointer]:
+                      - /url: /user/eleks/
+                      - generic [ref=e151]:
+                        - img "u/eleks avatarja" [ref=e156]
+                        - generic [ref=e157]: u/eleks
+                    - generic [ref=e158]: ·
+                    - time [ref=e160]: 7 napja
+                  - link "How to Fix 5,000+ SonarQube Technical Debt Issues with AI" [ref=e161] [cursor=pointer]:
+                    - /url: /user/eleks/comments/1u2tjxz/how_to_fix_5000_sonarqube_technical_debt_issues/
+                  - generic [ref=e162]:
+                    - generic [ref=e163]:
+                      - generic [ref=e164]: "2"
+                      - text: pontozás
+                    - text: ·
+                    - generic [ref=e165]:
+                      - generic [ref=e166]: "0"
+                      - text: hozzászólás
+              - separator [ref=e167]
+              - generic [ref=e169]:
+                - generic:
+                  - 'heading "OpenCode -> Pi: smart simplification or dumb downgrade?" [level=2]':
+                    - 'link "OpenCode -> Pi: smart simplification or dumb downgrade?" [ref=e170] [cursor=pointer]':
+                      - /url: /r/opencodeCLI/comments/1trx4jp/opencode_pi_smart_simplification_or_dumb_downgrade/
+                      - generic [ref=e171]:
+                        - generic: "OpenCode -> Pi: smart simplification or dumb downgrade?"
+                - generic [ref=e172]:
+                  - generic [ref=e175]:
+                    - link "r/opencodeCLI" [ref=e178] [cursor=pointer]:
+                      - /url: /r/opencodeCLI/
+                      - generic [ref=e182]: r/opencodeCLI
+                    - generic [ref=e183]: ·
+                    - time [ref=e185]: 19 napja
+                  - 'link "OpenCode -> Pi: smart simplification or dumb downgrade?" [ref=e186] [cursor=pointer]':
+                    - /url: /r/opencodeCLI/comments/1trx4jp/opencode_pi_smart_simplification_or_dumb_downgrade/
+                  - generic [ref=e187]:
+                    - generic [ref=e188]:
+                      - generic [ref=e189]: "58"
+                      - text: pontozás
+                    - text: ·
+                    - generic [ref=e190]:
+                      - generic [ref=e191]: "45"
+                      - text: hozzászólás
+              - separator [ref=e192]
+              - generic [ref=e194]:
+                - generic:
+                  - heading "How to connect 100 MCP servers without the context window exploding" [level=2]:
+                    - link "How to connect 100 MCP servers without the context window exploding" [ref=e195] [cursor=pointer]:
+                      - /url: /r/mcp/comments/1t73igk/how_to_connect_100_mcp_servers_without_the/
+                      - generic [ref=e196]:
+                        - generic: How to connect 100 MCP servers without the context window exploding
+                - generic [ref=e197]:
+                  - generic [ref=e200]:
+                    - link "r/mcp" [ref=e203] [cursor=pointer]:
+                      - /url: /r/mcp/
+                      - generic [ref=e207]: r/mcp
+                    - generic [ref=e208]: ·
+                    - time [ref=e210]: 1 hónapja
+                  - link "How to connect 100 MCP servers without the context window exploding" [ref=e211] [cursor=pointer]:
+                    - /url: /r/mcp/comments/1t73igk/how_to_connect_100_mcp_servers_without_the/
+                  - generic [ref=e212]:
+                    - generic [ref=e213]:
+                      - generic [ref=e214]: "146"
+                      - text: pontozás
+                    - text: ·
+                    - generic [ref=e215]:
+                      - generic [ref=e216]: "38"
+                      - text: hozzászólás
+                - link "How to connect 100 MCP servers without the context window exploding miniatűrje" [ref=e218] [cursor=pointer]:
+                  - /url: /r/mcp/comments/1t73igk/how_to_connect_100_mcp_servers_without_the/
+                  - img "How to connect 100 MCP servers without the context window exploding" [ref=e223]
+              - separator [ref=e224]
+              - generic [ref=e226]:
+                - generic:
+                  - heading "I built a tool that gives your AI project a \"Drift Score\" — how much has AI deviated from what you actually wanted" [level=2]:
+                    - link "I built a tool that gives your AI project a \"Drift Score\" — how much has AI deviated from what you actually wanted" [ref=e227] [cursor=pointer]:
+                      - /url: /r/ClaudeAI/comments/1sepy5a/i_built_a_tool_that_gives_your_ai_project_a_drift/
+                      - generic [ref=e228]:
+                        - generic: I built a tool that gives your AI project a "Drift Score" — how much has AI deviated from what you actually wanted
+                - generic [ref=e229]:
+                  - generic [ref=e232]:
+                    - link "r/ClaudeAI" [ref=e235] [cursor=pointer]:
+                      - /url: /r/ClaudeAI/
+                      - generic [ref=e239]: r/ClaudeAI
+                    - generic [ref=e240]: ·
+                    - time [ref=e242]: 2 hónapja
+                  - link "I built a tool that gives your AI project a \"Drift Score\" — how much has AI deviated from what you actually wanted" [ref=e243] [cursor=pointer]:
+                    - /url: /r/ClaudeAI/comments/1sepy5a/i_built_a_tool_that_gives_your_ai_project_a_drift/
+                  - generic [ref=e244]:
+                    - generic [ref=e245]:
+                      - generic [ref=e246]: "2"
+                      - text: pontozás
+                    - text: ·
+                    - generic [ref=e247]:
+                      - generic [ref=e248]: "1"
+                      - text: hozzászólás
+              - separator [ref=e249]
+              - generic [ref=e251]:
+                - generic:
+                  - heading "🧠🔨 Brain Break is an AI-powered terminal quiz app" [level=2]:
+                    - link "🧠🔨 Brain Break is an AI-powered terminal quiz app" [ref=e252] [cursor=pointer]:
+                      - /url: /r/BMAD_Method/comments/1s6ec4x/brain_break_is_an_aipowered_terminal_quiz_app/
+                      - generic [ref=e253]:
+                        - generic: 🧠🔨 Brain Break is an AI-powered terminal quiz app
+                - generic [ref=e254]:
+                  - generic [ref=e257]:
+                    - link "r/BMAD_Method" [ref=e260] [cursor=pointer]:
+                      - /url: /r/BMAD_Method/
+                      - img [ref=e264]
+                      - generic [ref=e266]: r/BMAD_Method
+                    - generic [ref=e267]: ·
+                    - time [ref=e269]: 3 hónapja
+                  - link "🧠🔨 Brain Break is an AI-powered terminal quiz app" [ref=e270] [cursor=pointer]:
+                    - /url: /r/BMAD_Method/comments/1s6ec4x/brain_break_is_an_aipowered_terminal_quiz_app/
+                  - generic [ref=e271]:
+                    - generic [ref=e272]:
+                      - generic [ref=e273]: "5"
+                      - text: pontozás
+                    - text: ·
+                    - generic [ref=e274]:
+                      - generic [ref=e275]: "0"
+                      - text: hozzászólás
+              - separator [ref=e276]
+              - generic [ref=e278]:
+                - generic:
+                  - heading "I built a code intelligence platform with semantic resolution, incremental indexing, architecture detection, commit-level history, PR analysis and MCP." [level=2]:
+                    - link "I built a code intelligence platform with semantic resolution, incremental indexing, architecture detection, commit-level history, PR analysis and MCP." [ref=e279] [cursor=pointer]:
+                      - /url: /r/ClaudeCode/comments/1s1diu6/i_built_a_code_intelligence_platform_with/
+                      - generic [ref=e280]:
+                        - generic: I built a code intelligence platform with semantic resolution, incremental indexing, architecture detection, commit-level history, PR analysis and MCP.
+                - generic [ref=e281]:
+                  - generic [ref=e284]:
+                    - link "r/ClaudeCode" [ref=e287] [cursor=pointer]:
+                      - /url: /r/ClaudeCode/
+                      - generic [ref=e291]: r/ClaudeCode
+                    - generic [ref=e292]: ·
+                    - time [ref=e294]: 3 hónapja
+                  - link "I built a code intelligence platform with semantic resolution, incremental indexing, architecture detection, commit-level history, PR analysis and MCP." [ref=e295] [cursor=pointer]:
+                    - /url: /r/ClaudeCode/comments/1s1diu6/i_built_a_code_intelligence_platform_with/
+                  - generic [ref=e296]:
+                    - generic [ref=e297]:
+                      - generic [ref=e298]: "1"
+                      - text: pontozás
+                    - text: ·
+                    - generic [ref=e299]:
+                      - generic [ref=e300]: "0"
+                      - text: hozzászólás
+                - link "I built a code intelligence platform with semantic resolution, incremental indexing, architecture detection, commit-level history, PR analysis and MCP. miniatűrje" [ref=e302] [cursor=pointer]:
+                  - /url: /r/ClaudeCode/comments/1s1diu6/i_built_a_code_intelligence_platform_with/
+                  - img "I built a code intelligence platform with semantic resolution, incremental indexing, architecture detection, commit-level history, PR analysis and MCP." [ref=e307]
+              - separator [ref=e308]
+              - generic [ref=e310]:
+                - generic:
+                  - heading "I built a code intelligence platform with semantic resolution, incremental indexing, architecture detection, commit-level history, PR analysis and MCP." [level=2]:
+                    - link "I built a code intelligence platform with semantic resolution, incremental indexing, architecture detection, commit-level history, PR analysis and MCP." [ref=e311] [cursor=pointer]:
+                      - /url: /r/mcp/comments/1s0x2h8/i_built_a_code_intelligence_platform_with/
+                      - generic [ref=e312]:
+                        - generic: I built a code intelligence platform with semantic resolution, incremental indexing, architecture detection, commit-level history, PR analysis and MCP.
+                - generic [ref=e313]:
+                  - generic [ref=e316]:
+                    - link "r/mcp" [ref=e319] [cursor=pointer]:
+                      - /url: /r/mcp/
+                      - generic [ref=e323]: r/mcp
+                    - generic [ref=e324]: ·
+                    - time [ref=e326]: 3 hónapja
+                  - link "I built a code intelligence platform with semantic resolution, incremental indexing, architecture detection, commit-level history, PR analysis and MCP." [ref=e327] [cursor=pointer]:
+                    - /url: /r/mcp/comments/1s0x2h8/i_built_a_code_intelligence_platform_with/
+                  - generic [ref=e328]:
+                    - generic [ref=e329]:
+                      - generic [ref=e330]: "85"
+                      - text: pontozás
+                    - text: ·
+                    - generic [ref=e331]:
+                      - generic [ref=e332]: "15"
+                      - text: hozzászólás
+                - link "I built a code intelligence platform with semantic resolution, incremental indexing, architecture detection, commit-level history, PR analysis and MCP. miniatűrje" [ref=e334] [cursor=pointer]:
+                  - /url: /r/mcp/comments/1s0x2h8/i_built_a_code_intelligence_platform_with/
+                  - img "I built a code intelligence platform with semantic resolution, incremental indexing, architecture detection, commit-level history, PR analysis and MCP." [ref=e339]
+              - separator [ref=e340]
+          - generic [ref=e344]:
+            - generic [ref=e347]:
+              - generic [ref=e348]:
+                - heading "Közösségek" [level=2] [ref=e349]
+                - generic [ref=e351]:
+                  - link "mcp" [ref=e352] [cursor=pointer]:
+                    - /url: /r/mcp/
+                    - generic [ref=e353]:
+                      - generic: mcp
+                  - generic [ref=e360]:
+                    - heading "r/mcp" [level=3] [ref=e361]:
+                      - generic [ref=e362]: r/mcp
+                    - generic [ref=e363]:
+                      - paragraph [ref=e364]: The Model Context Protocol is an open standard that enables developers to build secure, two-way connections between their data sources and AI-powered tools
+                      - generic [ref=e365]:
+                        - generic [ref=e366]:
+                          - generic [ref=e367]: 54 E
+                          - text: heti látogató
+                        - generic [ref=e368]: ·
+                        - generic [ref=e369]:
+                          - generic [ref=e370]: 1,1 E
+                          - text: heti közreműködés
+                - generic [ref=e372]:
+                  - link "MCPservers" [ref=e373] [cursor=pointer]:
+                    - /url: /r/MCPservers/
+                    - generic [ref=e374]:
+                      - generic: MCPservers
+                  - generic [ref=e381]:
+                    - heading "r/MCPservers" [level=3] [ref=e382]:
+                      - generic [ref=e383]: r/MCPservers
+                    - generic [ref=e384]:
+                      - paragraph [ref=e385]: This community is dedicated to discussions about the Model Context Protocol (MCP), an open standard facilitating secure, two-way connections between data sources and AI-powered tools. Here, members share MCP server implementations, integration strategies, and best practices. Whether you’re a developer, researcher, or AI enthusiast, join us to collaborate, innovate, and advance the MCP ecosystem.
+                      - generic [ref=e386]:
+                        - generic [ref=e387]:
+                          - generic [ref=e388]: 1,4 E
+                          - text: heti látogató
+                        - generic [ref=e389]: ·
+                        - generic [ref=e390]:
+                          - generic [ref=e391]: "70"
+                          - text: heti közreműködés
+                - generic [ref=e393]:
+                  - link "mpcsample" [ref=e394] [cursor=pointer]:
+                    - /url: /r/mpcsample/
+                    - generic [ref=e395]:
+                      - generic: mpcsample
+                  - generic [ref=e402]:
+                    - heading "r/mpcsample" [level=3] [ref=e403]:
+                      - generic [ref=e404]: r/mpcsample
+                    - generic [ref=e405]:
+                      - paragraph [ref=e406]: Dedicated to review and comment about Akai mpc sample equipment.
+                      - generic [ref=e407]:
+                        - generic [ref=e408]:
+                          - generic [ref=e409]: 1,2 E
+                          - text: heti látogató
+                        - generic [ref=e410]: ·
+                        - generic [ref=e411]:
+                          - generic [ref=e412]: "107"
+                          - text: heti közreműködés
+                - generic [ref=e414]:
+                  - link "mpcusers" [ref=e415] [cursor=pointer]:
+                    - /url: /r/mpcusers/
+                    - generic [ref=e416]:
+                      - generic: mpcusers
+                  - generic [ref=e423]:
+                    - heading "r/mpcusers" [level=3] [ref=e424]:
+                      - generic [ref=e425]: r/mpcusers
+                    - generic [ref=e426]:
+                      - paragraph [ref=e427]: A place for all things MPC. Share your creations, thoughts, questions and help support your fellow MPC users.
+                      - generic [ref=e428]:
+                        - generic [ref=e429]:
+                          - generic [ref=e430]: 26 E
+                          - text: heti látogató
+                        - generic [ref=e431]: ·
+                        - generic [ref=e432]:
+                          - generic [ref=e433]: 1,6 E
+                          - text: heti közreműködés
+                - generic [ref=e435]:
+                  - link "akaiMPC" [ref=e436] [cursor=pointer]:
+                    - /url: /r/akaiMPC/
+                    - generic [ref=e437]:
+                      - generic: akaiMPC
+                  - generic [ref=e444]:
+                    - heading "r/akaiMPC" [level=3] [ref=e445]:
+                      - generic [ref=e446]: r/akaiMPC
+                    - generic [ref=e447]:
+                      - paragraph [ref=e448]: Unleash the power of MPC. Free the music. Chopping, expansions, and general help. https://www.reddit.com/r/mpcusers/
+                      - generic [ref=e449]:
+                        - generic [ref=e450]:
+                          - generic [ref=e451]: 9 E
+                          - text: heti látogató
+                        - generic [ref=e452]: ·
+                        - generic [ref=e453]:
+                          - generic [ref=e454]: "281"
+                          - text: heti közreműködés
+                - link "További közösségek" [ref=e456] [cursor=pointer]:
+                  - /url: /search/?q=sonarqube+mcp&type=communities
+              - separator [ref=e457]
+              - generic [ref=e458]:
+                - heading "Profilok" [level=2] [ref=e459]
+                - generic [ref=e461]:
+                  - link "MCP_" [ref=e462] [cursor=pointer]:
+                    - /url: /user/MCP_/
+                    - generic [ref=e463]:
+                      - generic: MCP_
+                  - generic [ref=e464]:
+                    - img [ref=e470]
+                    - generic [ref=e472]:
+                      - heading "u/MCP_" [level=3] [ref=e474]:
+                        - generic [ref=e475]: u/MCP_
+                      - paragraph [ref=e477]:
+                        - generic [ref=e478]:
+                          - generic [ref=e479]: 21 E
+                          - text: karma
+                - generic [ref=e481]:
+                  - link "_-MCP-_" [ref=e482] [cursor=pointer]:
+                    - /url: /user/_-MCP-_/
+                    - generic [ref=e483]:
+                      - generic: _-MCP-_
+                  - generic [ref=e484]:
+                    - img "_-MCP-_ u/_-MCP-_ avatarja" [ref=e490]
+                    - generic [ref=e491]:
+                      - heading "u/_-MCP-_" [level=3] [ref=e493]:
+                        - generic [ref=e494]: u/_-MCP-_
+                      - generic [ref=e495]:
+                        - paragraph [ref=e496]: End of Line.
+                        - paragraph [ref=e497]:
+                          - generic [ref=e498]:
+                            - generic [ref=e499]: "10"
+                            - text: karma
+                - generic [ref=e501]:
+                  - link "MCP-" [ref=e502] [cursor=pointer]:
+                    - /url: /user/MCP-/
+                    - generic [ref=e503]:
+                      - generic: MCP-
+                  - generic [ref=e504]:
+                    - img "MCP- u/MCP- avatarja" [ref=e510]
+                    - generic [ref=e511]:
+                      - heading "u/MCP-" [level=3] [ref=e513]:
+                        - generic [ref=e514]: u/MCP-
+                      - paragraph [ref=e516]:
+                        - generic [ref=e517]:
+                          - generic [ref=e518]: "1"
+                          - text: karma
+                - generic [ref=e520]:
+                  - link "---mcp---" [ref=e521] [cursor=pointer]:
+                    - /url: /user/---mcp---/
+                    - generic [ref=e522]:
+                      - generic: "---mcp---"
+                  - generic [ref=e523]:
+                    - img "---mcp--- u/---mcp--- avatarja" [ref=e529]
+                    - generic [ref=e530]:
+                      - heading "u/---mcp---" [level=3] [ref=e532]:
+                        - generic [ref=e533]: u/---mcp---
+                      - paragraph [ref=e535]:
+                        - generic [ref=e536]:
+                          - generic [ref=e537]: "1"
+                          - text: karma
+                - link "További profilok megtekintése" [ref=e539] [cursor=pointer]:
+                  - /url: /search/?q=sonarqube+mcp&type=people
+            - list [ref=e541]:
+              - listitem [ref=e542]:
+                - link "Reddit-szabályok" [ref=e544] [cursor=pointer]:
+                  - /url: https://www.redditinc.com/policies/content-policy
+              - listitem [ref=e545]:
+                - link "Adatvédelmi szabályzat" [ref=e547] [cursor=pointer]:
+                  - /url: https://www.reddit.com/policies/privacy-policy
+              - listitem [ref=e548]:
+                - link "Felhasználói megállapodás" [ref=e550] [cursor=pointer]:
+                  - /url: https://www.redditinc.com/policies/user-agreement
+              - listitem [ref=e551]:
+                - link "Akadálymentesség" [ref=e553] [cursor=pointer]:
+                  - /url: https://support.reddithelp.com/hc/sections/38303584022676-Accessibility
+              - listitem [ref=e554]:
+                - link "Reddit, Inc. © 2026. Minden jog fenntartva." [ref=e555] [cursor=pointer]:
+                  - /url: https://redditinc.com
+      - dialog "Data Protection Consent" [ref=e557]:
+        - generic [ref=e558]:
+          - generic [ref=e560]:
+            - generic:
+              - button "Bezárás" [ref=e564] [cursor=pointer]:
+                - img [ref=e567]
+              - generic [ref=e569]:
+                - generic [ref=e571]: Add meg a cookie-beállításaidat
+                - generic [ref=e573]:
+                  - paragraph [ref=e574]: "Reddit uses cookies and similar technologies to:"
+                  - list [ref=e575]:
+                    - listitem [ref=e576]: Keep the website operational and running properly
+                    - listitem [ref=e577]: Prevent fraud and abuse
+                    - listitem [ref=e578]: Monitor site usage and performance metrics
+                  - paragraph [ref=e579]: "If you choose “Accept All” we’ll also use cookies to:"
+                  - list [ref=e580]:
+                    - listitem [ref=e581]: Personalize your recommendations and ads
+                    - listitem [ref=e582]: Measure the performance of ads
+                    - listitem [ref=e583]: Develop and improve new features and services
+                  - paragraph [ref=e584]: Ha a „Nem kötelező cookie-k elutasítása” lehetőséget választod, akkor ezekhez a további felhasználásokhoz nem fogunk cookie-kat használni. A cookie-beállításaidat a beállítások között módosíthatod.
+                  - paragraph [ref=e585]:
+                    - text: További információ arról, hogy
+                    - link "a Reddit hogyan használja a cookie-kat" [ref=e586] [cursor=pointer]:
+                      - /url: /hu-hu/policies/cookies
+                    - text: .
+          - generic [ref=e588]:
+            - button "Nem kötelező cookie-k elutasítása" [ref=e589] [cursor=pointer]:
+              - generic [ref=e591]: Nem kötelező cookie-k elutasítása
+            - button "Az összes elfogadása" [ref=e592] [cursor=pointer]:
+              - generic [ref=e594]: Az összes elfogadása
