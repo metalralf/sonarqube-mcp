@@ -163,6 +163,12 @@ describe('integration', { skip: !TOKEN }, () => {
     assert.ok(res.issues || res.total === 0);
   });
 
+  it('sonar_metrics_history returns history data', async () => {
+    const res = await handler('sonar_metrics_history')({ projectKey: 'sonarcube_mcp', metric: 'coverage', days: 7 });
+    assert.ok(res.measures);
+    assert.ok(Array.isArray(res.measures));
+  });
+
   it('sonar_search_metrics returns metrics list', async () => {
     const res = await handler('sonar_search_metrics')({});
     assert.ok(res.metrics);

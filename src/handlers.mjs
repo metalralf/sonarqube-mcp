@@ -44,6 +44,7 @@ const TOOL_CATEGORIES = {
   quality: ['sonar_quality_gate', 'sonar_list_quality_gates', 'sonar_measures', 'sonar_search_metrics'],
   coverage: ['sonar_coverage_files', 'sonar_file_coverage_details'],
   duplications: ['sonar_search_duplicated_files', 'sonar_duplications'],
+  history: ['sonar_metrics_history'],
   worst: ['sonar_worst_metrics'],
   scm: ['sonar_source', 'sonar_scm_info'],
   branches: ['sonar_list_branches', 'sonar_list_pull_requests'],
@@ -140,8 +141,8 @@ const ALL_TOOLS = [
 
   tool('sonar_issues', 'Search SonarQube issues for a project. Returns issues sorted by severity (most severe first). Supports filtering by severity, type, resolution, compact mode, and source embedding.', {
     projectKey,
-    severities: z.string().optional().describe('Comma-separated: INFO,MINOR,MAJOR,CRITICAL,BLOCKER'),
-    types: z.string().optional().describe('Comma-separated: CODE_SMELL,BUG,VULNERABILITY,SECURITY_HOTSPOT'),
+    severities: z.union([z.string(), z.array(z.string())]).optional().describe('Comma-separated or array: INFO,MINOR,MAJOR,CRITICAL,BLOCKER'),
+    types: z.union([z.string(), z.array(z.string())]).optional().describe('Comma-separated or array: CODE_SMELL,BUG,VULNERABILITY,SECURITY_HOTSPOT'),
     resolved: z.boolean().optional().describe('Include resolved issues (default false)'),
     statuses: z.string().optional().describe('Comma-separated issue statuses: OPEN,CONFIRMED,REOPENED,RESOLVED,CLOSED (default OPEN,CONFIRMED,REOPENED)'),
     limit: maxResults,
@@ -162,8 +163,8 @@ const ALL_TOOLS = [
       params.set('resolved', 'false');
     }
 
-    if (severities) params.set('severities', severities);
-    if (types) params.set('types', types);
+    if (severities) params.set('severities', Array.isArray(severities) ? severities.join(',') : severities);
+    if (types) params.set('types', Array.isArray(types) ? types.join(',') : types);
 
     const data = await sonarGet(`/api/issues/search?${params.toString()}`);
     maybeTruncated(data);
@@ -208,8 +209,8 @@ const ALL_TOOLS = [
 
   tool('sonar_new_issues', 'Get issues created since the last analysis. Useful for seeing what changed after a scan.', {
     projectKey,
-    severities: z.string().optional().describe('Comma-separated: INFO,MINOR,MAJOR,CRITICAL,BLOCKER'),
-    types: z.string().optional().describe('Comma-separated: CODE_SMELL,BUG,VULNERABILITY,SECURITY_HOTSPOT'),
+    severities: z.union([z.string(), z.array(z.string())]).optional().describe('Comma-separated or array: INFO,MINOR,MAJOR,CRITICAL,BLOCKER'),
+    types: z.union([z.string(), z.array(z.string())]).optional().describe('Comma-separated or array: CODE_SMELL,BUG,VULNERABILITY,SECURITY_HOTSPOT'),
     limit: maxResults,
     compact: z.boolean().optional().describe('Strip verbose fields for token efficiency'),
   }, async ({ projectKey, severities, types, limit, compact }) => {
@@ -228,8 +229,8 @@ const ALL_TOOLS = [
       asc: 'false',
       createdAfter,
     });
-    if (severities) params.set('severities', severities);
-    if (types) params.set('types', types);
+    if (severities) params.set('severities', Array.isArray(severities) ? severities.join(',') : severities);
+    if (types) params.set('types', Array.isArray(types) ? types.join(',') : types);
 
     const data = await sonarGet(`/api/issues/search?${params.toString()}`);
     maybeTruncated(data);
@@ -245,7 +246,11 @@ const ALL_TOOLS = [
     projectKey,
     status: z.string().optional().describe('TO_REVIEW or REVIEWED (default TO_REVIEW)'),
     limit: z.number().optional().describe('Max results (default 30, max 500)'),
-  }, async ({ projectKey, status, limit }) => {
+  }, async ({ projectKey: projectKey, status, limit }) => {
+    const token = process.env.SONARQUBE_TOKEN || '';
+    if (token && !token.startsWith('squ_')) {
+      throw new Error('Hotspots require a User token (squ_ prefix). Current token starts with "' + token.slice(0, 4) + '...". Generate a user token at SonarQube > My Account > Security.');
+    }
     const key = resolveProjectKey({ projectKey });
     const params = new URLSearchParams({
       projectKey: key,
@@ -456,6 +461,17 @@ const ALL_TOOLS = [
     projectKey,
     threshold: z.number().optional().describe('Duplication density % threshold (default 3). Files above this value are returned.'),
   }, measureSearch('duplicated_lines_density', 'duplicatedLinesDensity', 3, true)),
+
+  tool('sonar_metrics_history', 'Get metric history over time for a project (e.g. coverage trajectory). Useful for tracking regressions and trends.', {
+    projectKey,
+    metric: z.string().describe('Metric key (e.g. coverage, bugs, code_smells). Use sonar_search_metrics to list available metrics.'),
+    days: z.number().optional().describe('Number of days of history to fetch (default 30)'),
+  }, async ({ projectKey, metric, days }) => {
+    const key = resolveProjectKey({ projectKey });
+    const d = Math.min(Math.max(Number(days) || 30, 1), 365);
+    const from = new Date(Date.now() - d * 86400000).toISOString().split('T')[0];
+    return sonarGet(`/api/measures/search_history?component=${encode(key)}&metrics=${encode(metric)}&from=${from}`);
+  }),
 
   tool('sonar_worst_metrics', 'Find files with the worst metric values across a project — lowest coverage, most duplicated lines, highest complexity. Helps identify hotspots that need attention.', {
     projectKey,

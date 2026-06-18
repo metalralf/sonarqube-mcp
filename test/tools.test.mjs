@@ -20,6 +20,7 @@ describe('tools', () => {
     'sonar_list_webhooks',
     'sonar_list_pull_requests',
     'sonar_measures',
+    'sonar_metrics_history',
     'sonar_new_issues',
     'sonar_ping',
     'sonar_quality_gate',

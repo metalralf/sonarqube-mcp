@@ -1,6 +1,6 @@
 # sonarqube-mcp
 
-An MCP server that exposes SonarQube data as AI agent tools. **30 tools** covering projects, issues, quality gates, hotspots, coverage, SCM, webhooks, worst-metric ranking, and more.
+An MCP server that exposes SonarQube data as AI agent tools. **31 tools** covering projects, issues, quality gates, hotspots, coverage, SCM, webhooks, worst-metric ranking, and more.
 
 *Dogfooding: this project is checked via its own tools.*
 
@@ -14,15 +14,15 @@ This project is the **lightweight Node.js alternative**: covers the same REST AP
 
 ## Quick start
 
-> Pin to a specific version: `["npx", "-y", "github:metalralf/sonarqube-mcp#v1.1.1"]`  
-> Omit `#v1.1.1` for the latest (unstable) development version.
+> Pin to a specific version: `["npx", "-y", "github:metalralf/sonarqube-mcp@v1.1.1"]`  
+> Omit `@v1.1.1` for the latest (unstable) development version.
 
 ```json
 {
   "mcp": {
     "sonarqube": {
       "type": "local",
-      "command": ["npx", "-y", "github:metalralf/sonarqube-mcp#v1.1.1"],
+      "command": ["npx", "-y", "github:metalralf/sonarqube-mcp@v1.1.1"],
       "enabled": true,
       "environment": {
         "SONARQUBE_URL": "http://localhost:9000",
@@ -34,7 +34,7 @@ This project is the **lightweight Node.js alternative**: covers the same REST AP
 }
 ```
 
-## Tools (30)
+## Tools (31)
 
 ### Discovery & Status
 
@@ -104,6 +104,7 @@ This project is the **lightweight Node.js alternative**: covers the same REST AP
 
 | Tool | Purpose |
 |---|---|
+| `sonar_metrics_history` | Get metric history over time (e.g. coverage trajectory) — track regressions |
 | `sonar_worst_metrics` | Find files with the worst metric values — lowest coverage, highest duplication, most complexity |
 | `sonar_search_metrics` | Browse available metric definitions |
 
