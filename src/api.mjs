@@ -1,29 +1,16 @@
-const env = (name, fallback = '') => process.env[name] ?? fallback;
+// @ts-check
+const env = (/** @type {string} */ name, /** @type {string} */ fallback = '') => /** @type {string} */ (process.env[name] ?? fallback);
 
 export const getHostUrl = () => env('SONARQUBE_URL', 'http://localhost:9000').replace(/\/$/, '');
 export const getToken = () => env('SONARQUBE_TOKEN');
 
-const log = (m) => process.stderr.write(`[sonarqube-mcp] ${m}\n`);
-const authHeader = () =>
-  env('SONARQUBE_AUTH_SCHEME') === 'bearer'
-    ? `Bearer ${getToken()}`
-    : `Basic ${Buffer.from(getToken() + ':').toString('base64')}`;
-
-export const sonarPost = async (path, body) => {
-  if (!getToken()) throw new Error('SONARQUBE_TOKEN is not set');
-  const res = await fetch(`${getHostUrl()}${path}`, {
-    method: 'POST',
-    headers: { authorization: authHeader(), 'Content-Type': 'application/x-www-form-urlencoded' },
-    body,
-  });
-  const text = await res.text();
-  let parsed;
-  try { parsed = JSON.parse(text); } catch { parsed = text; }
-  if (!res.ok) {
-    const detail = typeof parsed === 'object' ? JSON.stringify(parsed) : parsed;
-    throw new Error(`SonarQube ${res.status}: ${detail}`);
-  }
-  return parsed;
+const log = (/** @type {string} */ m) => process.stderr.write(`[sonarqube-mcp] ${m}\n`);
+const authHeader = () => {
+  const scheme = env('SONARQUBE_AUTH_SCHEME');
+  const token = getToken();
+  return scheme === 'bearer'
+    ? `Bearer ${token}`
+    : `Basic ${Buffer.from(token + ':').toString('base64')}`;
 };
 
 const instanceHint = () => {
@@ -44,31 +31,48 @@ export const sonarCheckServer = async () => {
     const res = await fetch(`${getHostUrl()}/api/system/health`, { headers: { authorization: authHeader() }, signal: AbortSignal.timeout(5000) });
     if (!res.ok) return { reachable: true, status: res.status };
     const body = await res.json();
-    return { reachable: true, health: body.health };
-  } catch (e) {
-    return { reachable: false, error: e.message, hint: instanceHint() };
+    return { reachable: true, health: /** @type {any} */ (body).health };
+  } catch (/** @type {unknown} */ e) {
+    return { reachable: false, error: (/** @type {Error} */ (e)).message, hint: instanceHint() };
   }
 };
 
-export const sonarGet = async (path) => {
+export const sonarPost = async (/** @type {string} */ path, /** @type {string} */ body) => {
+  if (!getToken()) throw new Error('SONARQUBE_TOKEN is not set');
+  const res = await fetch(`${getHostUrl()}${path}`, {
+    method: 'POST',
+    headers: { authorization: authHeader(), 'Content-Type': 'application/x-www-form-urlencoded' },
+    body,
+  });
+  const text = await res.text();
+  let parsed;
+  try { parsed = JSON.parse(text); } catch { parsed = text; }
+  if (!res.ok) {
+    const detail = typeof parsed === 'object' ? JSON.stringify(parsed) : String(parsed);
+    throw new Error(`SonarQube ${res.status}: ${detail}`);
+  }
+  return /** @type {any} */ (parsed);
+};
+
+export const sonarGet = async (/** @type {string} */ path) => {
   if (!getToken()) throw new Error('SONARQUBE_TOKEN is not set');
   let res;
   try {
     res = await fetch(`${getHostUrl()}${path}`, { headers: { authorization: authHeader() } });
-  } catch (e) {
-    throw new Error(`Cannot reach SonarQube at ${getHostUrl()} (${e.message}).\n\n${instanceHint()}`);
+  } catch (/** @type {unknown} */ e) {
+    throw new Error(`Cannot reach SonarQube at ${getHostUrl()} (${(/** @type {Error} */ (e)).message}).\n\n${instanceHint()}`);
   }
   const text = await res.text();
   let body;
   try { body = JSON.parse(text); } catch { body = text; }
   if (!res.ok) {
-    const detail = typeof body === 'object' ? JSON.stringify(body) : body;
+    const detail = typeof body === 'object' ? JSON.stringify(body) : String(body);
     if (res.status === 403 && path.startsWith('/api/hotspots/')) {
       throw new Error('SonarQube 403: security hotspots require a User token (squ_ prefix) with Browse permission. Project/Global analysis tokens (sqp_/sqa_) cannot read hotspots.');
     }
     throw new Error(`SonarQube ${res.status}: ${detail}`);
   }
-  return body;
+  return /** @type {any} */ (body);
 };
 
 export const orgQuery = () => {
@@ -76,16 +80,26 @@ export const orgQuery = () => {
   return org ? `&organization=${encodeURIComponent(org)}` : '';
 };
 
-export const resolveProjectKey = (args) => {
+/**
+ * @param {{ projectKey?: string }} [args]
+ * @returns {string}
+ */
+export const resolveProjectKey = (args = {}) => {
   const defaultProject = env('SONARQUBE_PROJECT');
   if (args.projectKey) return args.projectKey;
   if (defaultProject) return defaultProject;
   throw new Error('projectKey required — set SONARQUBE_PROJECT or pass projectKey');
 };
 
+/**
+ * @template T
+ * @param {T & { paging?: { total: number; pageSize: number } }} data
+ * @returns {T & { _truncated?: boolean }}
+ */
 export const maybeTruncated = (data) => {
-  if (data.paging) data._truncated = data.paging.total > data.paging.pageSize;
-  return data;
+  const d = /** @type {T & { paging?: { total: number; pageSize: number }; _truncated?: boolean }} */ (data);
+  if (d.paging) d._truncated = d.paging.total > d.paging.pageSize;
+  return d;
 };
 
 export { log };

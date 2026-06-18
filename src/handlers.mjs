@@ -1,11 +1,19 @@
+// @ts-check
 import { z } from 'zod';
 import { execSync } from 'node:child_process';
 import { existsSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { sonarGet, sonarPost, sonarCheckServer, orgQuery, resolveProjectKey, maybeTruncated, getHostUrl } from './api.mjs';
 
-const encode = (v) => encodeURIComponent(v);
+const encode = (/** @type {string} */ v) => encodeURIComponent(v);
 
+/**
+ * @callback ToolHandler
+ * @param {Object} params
+ * @returns {Promise<any>}
+ */
+
+/** @type {Array<{ name: string; description: string; schema: Record<string, import('zod').ZodTypeAny>; handler: ToolHandler }>} */
 export const TOOL_CONFIGS = [
   {
     name: 'sonar_search_projects',

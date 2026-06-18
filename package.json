@@ -13,13 +13,17 @@
   ],
   "scripts": {
     "test": "node --test",
-    "coverage": "c8 node --test"
+    "coverage": "c8 node --test",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "c8": "^11.0.0"
+    "@types/node": "^25.9.3",
+    "c8": "^11.0.0",
+    "sonar-scanner": "^3.1.0",
+    "typescript": "^6.0.3"
   }
 }

@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @ts-check
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 
