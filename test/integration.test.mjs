@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
-import { describe, it, before } from 'node:test';
-import { getHostUrl, getToken, sonarGet } from '../src/api.mjs';
+import { describe, it, before, after } from 'node:test';
+import { getHostUrl, getToken, sonarGet, sonarPost } from '../src/api.mjs';
 
 const TOKEN = getToken();
 const HOST = getHostUrl();
@@ -9,9 +9,27 @@ import { TOOL_CONFIGS } from '../src/handlers.mjs';
 
 const handler = (name) => TOOL_CONFIGS.find((t) => t.name === name).handler;
 
-const TEST_UNANALYZED = 'zz_test_unanalyzed_' + Date.now();
+const createdProjects = [];
+
+const deleteProject = async (key) => {
+  try {
+    await sonarPost('/api/projects/delete', new URLSearchParams({ project: key }).toString());
+  } catch {}
+};
+
+const ensureProject = async (prefix) => {
+  const pk = prefix + Date.now() + Math.random().toString(36).slice(2, 6);
+  const res = await fetch(`${HOST}/api/projects/create?name=${pk}&project=${pk}`, {
+    method: 'POST', headers: { authorization: `Basic ${Buffer.from(TOKEN + ':').toString('base64')}` },
+  });
+  if (res.ok) createdProjects.push(pk);
+  return pk;
+};
 
 describe('integration', { skip: !TOKEN }, () => {
+  after(async () => {
+    for (const key of createdProjects) await deleteProject(key);
+  });
   it('sonarGet can reach the server', async () => {
     const res = await sonarGet('/api/system/health');
     assert.ok(res.health);
@@ -74,13 +92,8 @@ describe('integration', { skip: !TOKEN }, () => {
   });
 
   it('sonar_analysis_status returns NOT_ANALYZED for an unanalyzed project', async () => {
-    const res = await fetch(`${HOST}/api/projects/create?name=${TEST_UNANALYZED}&project=${TEST_UNANALYZED}`, {
-      method: 'POST',
-      headers: { authorization: `Basic ${Buffer.from(TOKEN + ':').toString('base64')}` },
-    });
-    if (!res.ok) return; // skip if token lacks project creation permission
-
-    const status = await handler('sonar_analysis_status')({ projectKey: TEST_UNANALYZED });
+    const pk = await ensureProject('zz_test_unanalyzed_');
+    const status = await handler('sonar_analysis_status')({ projectKey: pk });
     assert.equal(status.status, 'NOT_ANALYZED');
     assert.match(status.message, /no analysis data/);
   });
@@ -124,10 +137,7 @@ describe('integration', { skip: !TOKEN }, () => {
   });
 
   it('sonar_new_issues on unanalyzed project returns message', async () => {
-    const pk = 'zz_test_unanalyzed_' + Date.now();
-    await fetch(`${HOST}/api/projects/create?name=${pk}&project=${pk}`, {
-      method: 'POST', headers: { authorization: `Basic ${Buffer.from(TOKEN + ':').toString('base64')}` },
-    });
+    const pk = await ensureProject('zz_test_unanalyzed_');
     const res = await handler('sonar_new_issues')({ projectKey: pk });
     assert.match(res.message, /No previous analysis/);
   });
