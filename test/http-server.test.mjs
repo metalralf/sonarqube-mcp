@@ -73,4 +73,15 @@ describe('http server', { skip: !token }, () => {
     });
     assert.equal(res.status, 400);
   });
+
+  it('handles CORS preflight', async () => {
+    const res = await fetch(`${baseUrl}/tools`, { method: 'OPTIONS' });
+    assert.equal(res.status, 204);
+    assert.ok(res.headers.get('access-control-allow-origin'));
+  });
+
+  it('returns 404 for unknown path', async () => {
+    const res = await fetch(`${baseUrl}/nonexistent`);
+    assert.equal(res.status, 404);
+  });
 });
