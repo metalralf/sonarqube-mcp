@@ -174,6 +174,12 @@ describe('integration', { skip: !TOKEN }, () => {
     assert.ok(res.qualitygates[0].name);
   });
 
+  it('sonar_scm_info returns SCM data for a file', async () => {
+    const res = await handler('sonar_scm_info')({ key: 'sonarcube_mcp:src/index.mjs' });
+    assert.ok(res.scm);
+    assert.ok(Array.isArray(res.scm));
+  });
+
   it('sonar_coverage_files returns files below threshold', async () => {
     const res = await handler('sonar_coverage_files')({ projectKey: 'sonarcube_mcp', threshold: 100 });
     assert.equal(typeof res.total, 'number');

@@ -214,6 +214,23 @@ export const TOOL_CONFIGS = [
   },
 
   {
+    name: 'sonar_scm_info',
+    description: 'Get SCM (Git) blame/commit information for source file lines: author, date, and revision per line.',
+    schema: {
+      key: z.string().describe('Full component key (e.g. my-project:src/index.ts)'),
+      from: z.number().optional().describe('Starting line number (1-indexed)'),
+      to: z.number().optional().describe('Ending line number (inclusive)'),
+    },
+    handler: async ({ key, from, to }) => {
+      if (!key) throw new Error('key (component key) is required');
+      const params = new URLSearchParams({ key });
+      if (from) params.set('from', String(from));
+      if (to) params.set('to', String(to));
+      return sonarGet(`/api/sources/scm?${params.toString()}`);
+    },
+  },
+
+  {
     name: 'sonar_source',
     description: 'View source code lines for a SonarQube file component. Useful to see the context around a flagged issue or hotspot.',
     schema: {
