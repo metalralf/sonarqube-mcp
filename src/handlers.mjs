@@ -41,6 +41,16 @@ export const TOOL_CONFIGS = [
   },
 
   {
+    name: 'sonar_list_quality_gates',
+    description: 'List all quality gates defined in SonarQube, with their conditions and metrics.',
+    schema: {
+    },
+    handler: async () => {
+      return sonarGet('/api/qualitygates/list');
+    },
+  },
+
+  {
     name: 'sonar_measures',
     description: 'Get SonarQube metrics for a project: bugs, vulnerabilities, code smells, coverage, duplication, lines of code, and maintainability/security ratings.',
     schema: {

@@ -166,6 +166,14 @@ describe('integration', { skip: !TOKEN }, () => {
     assert.ok(main.name);
   });
 
+  it('sonar_list_quality_gates returns quality gate list', async () => {
+    const res = await handler('sonar_list_quality_gates')({});
+    assert.ok(res.qualitygates);
+    assert.ok(Array.isArray(res.qualitygates));
+    assert.ok(res.qualitygates.length > 0);
+    assert.ok(res.qualitygates[0].name);
+  });
+
   it('sonar_coverage_files returns files below threshold', async () => {
     const res = await handler('sonar_coverage_files')({ projectKey: 'sonarcube_mcp', threshold: 100 });
     assert.equal(typeof res.total, 'number');
