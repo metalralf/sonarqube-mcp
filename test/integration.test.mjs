@@ -157,6 +157,15 @@ describe('integration', { skip: !TOKEN }, () => {
     );
   });
 
+  it('sonar_list_pull_requests returns error hint on CE', async () => {
+    try {
+      const res = await handler('sonar_list_pull_requests')({ projectKey: 'sonarcube_mcp' });
+      assert.ok(Array.isArray(res));
+    } catch (e) {
+      assert.match(e.message, /404|SonarQube|Developer|Enterprise/);
+    }
+  });
+
   it('sonar_list_branches returns branches', async () => {
     const res = await handler('sonar_list_branches')({ projectKey: 'sonarcube_mcp' });
     assert.ok(Array.isArray(res));
