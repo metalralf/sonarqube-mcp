@@ -2,11 +2,13 @@ import http from 'node:http';
 import { z } from 'zod';
 import { getHostUrl, getToken, log } from './api.mjs';
 
-const cors = (origin) => ({
-  'Access-Control-Allow-Origin': origin,
+const allowedOrigin = process.env.SONARQUBE_HTTP_ALLOWED_ORIGINS || '';
+
+const cors = () => allowedOrigin ? {
+  'Access-Control-Allow-Origin': allowedOrigin,
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-});
+} : {};
 
 const sendJson = (res, status, data, headers) => {
   res.writeHead(status, { ...headers, 'Content-Type': 'application/json' });
@@ -21,7 +23,7 @@ const parseJson = async (req) => {
 
 const handleRequest = async (req, res, tools, toolMap, schemas, host, port) => {
   const url = new URL(req.url || '/', `http://${host}:${port}`);
-  const corsHeaders = cors('*');
+  const corsHeaders = cors();
 
   if (req.method === 'OPTIONS') {
     res.writeHead(204, corsHeaders);
