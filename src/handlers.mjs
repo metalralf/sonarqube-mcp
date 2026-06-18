@@ -397,6 +397,22 @@ export const TOOL_CONFIGS = [
   },
 
   {
+    name: 'sonar_list_pull_requests',
+    description: 'List pull requests for a project with their branch, title, analysis status, and quality gate status. Note: requires SonarQube Developer Edition or above.',
+    schema: {
+      projectKey: z.string().optional().describe('Project key (defaults to SONARQUBE_PROJECT)'),
+    },
+    handler: async ({ projectKey: pk }) => {
+      const key = resolveProjectKey({ projectKey: pk });
+      const data = await sonarGet(`/api/project_pull_requests/list?project=${encode(key)}`);
+      if (!data.pullRequests) return [];
+      return data.pullRequests.map(({ key: k, branch, title, analysisDate, status, url }) => ({
+        key: k, branch, title, analysisDate, status: status?.qualityGateStatus, url,
+      }));
+    },
+  },
+
+  {
     name: 'sonar_list_branches',
     description: 'List branches for a project with their analysis dates and quality gate status.',
     schema: {

@@ -14,6 +14,7 @@ describe('tools', () => {
     'sonar_list_branches',
     'sonar_list_quality_gates',
     'sonar_list_webhooks',
+    'sonar_list_pull_requests',
     'sonar_measures',
     'sonar_new_issues',
     'sonar_quality_gate',
