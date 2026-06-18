@@ -221,6 +221,23 @@ export const TOOL_CONFIGS = [
   },
 
   {
+    name: 'sonar_list_webhooks',
+    description: 'List webhooks configured for a project or globally. Useful to verify CI/CD integration with SonarQube.',
+    schema: {
+      projectKey: z.string().optional().describe('Project key (defaults to SONARQUBE_PROJECT). Omit for global webhooks.'),
+    },
+    handler: async ({ projectKey: pk }) => {
+      const params = new URLSearchParams();
+      if (pk) params.set('project', pk);
+      else {
+        const def = resolveProjectKey({});
+        if (def) params.set('project', def);
+      }
+      return sonarGet(`/api/webhooks/list?${params.toString()}`);
+    },
+  },
+
+  {
     name: 'sonar_analysis_status',
     description: 'Check if a project has been analyzed on SonarQube. Returns whether analysis data exists and guidance if not.',
     schema: {
