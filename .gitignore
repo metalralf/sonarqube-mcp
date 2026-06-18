@@ -8,3 +8,4 @@ sonar-project.properties
 coverage/
 .code-review-graph/
 .playwright-mcp/
+coverage-all/

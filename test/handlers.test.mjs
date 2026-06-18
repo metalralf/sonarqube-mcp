@@ -32,6 +32,58 @@ describe('handlers', () => {
     await assert.rejects(() => h({ path: 'api/test' }), /path must start with/);
   });
 
+  it('sonar_hotspot_details throws when key missing', async () => {
+    const h = TOOL_CONFIGS.find((t) => t.name === 'sonar_hotspot_details').handler;
+    await assert.rejects(() => h({}), /hotspotKey is required/);
+  });
+
+  it('sonar_change_hotspot_status throws when key missing', async () => {
+    const h = TOOL_CONFIGS.find((t) => t.name === 'sonar_change_hotspot_status').handler;
+    await assert.rejects(() => h({}), /hotspotKey is required/);
+  });
+
+  it('sonar_issues_bulk_transition throws when keys missing', async () => {
+    const h = TOOL_CONFIGS.find((t) => t.name === 'sonar_issues_bulk_transition').handler;
+    await assert.rejects(() => h({}), /issueKeys array is required/);
+    await assert.rejects(() => h({ issueKeys: [] }), /issueKeys array is required/);
+  });
+
+  it('sonar_raw adds usage hint on 4xx errors', { skip: !process.env.SONARQUBE_TOKEN }, async () => {
+    const h = TOOL_CONFIGS.find((t) => t.name === 'sonar_raw').handler;
+    try {
+      await h({ path: '/api/measures/component?metricKeys=coverage' });
+      assert.fail('should have thrown');
+    } catch (e) {
+      const msg = (/** @type {Error} */ (e)).message;
+      assert.ok(msg.includes('SonarQube 400'), 'should have 400 error');
+      assert.ok(msg.includes('Tip:'), 'should include usage hint');
+    }
+  });
+
+  it('sonar_list_pull_requests returns empty array on CE', { skip: !process.env.SONARQUBE_TOKEN }, async () => {
+    const h = TOOL_CONFIGS.find((t) => t.name === 'sonar_list_pull_requests').handler;
+    try {
+      const res = await h({ projectKey: 'sonarcube_mcp' });
+      assert.ok(Array.isArray(res));
+    } catch (e) {
+      assert.ok(e.message.includes('404'));
+    }
+  });
+
+  it('sonar_list_webhooks falls back to default project', { skip: !process.env.SONARQUBE_PROJECT }, async () => {
+    const h = TOOL_CONFIGS.find((t) => t.name === 'sonar_list_webhooks').handler;
+    const res = await h({});
+    assert.ok(res.webhooks !== undefined);
+  });
+
+  it('sonar_hotspots token check warns on non-squ token', async () => {
+    const prev = process.env.SONARQUBE_TOKEN;
+    process.env.SONARQUBE_TOKEN = 'sqp_testtoken';
+    const h = TOOL_CONFIGS.find((t) => t.name === 'sonar_hotspots').handler;
+    await assert.rejects(() => h({ projectKey: 'test' }), /User token/);
+    process.env.SONARQUBE_TOKEN = prev;
+  });
+
   it('sonar_run_analysis auto-creates properties and tries to run scanner', async () => {
     const h = TOOL_CONFIGS.find((t) => t.name === 'sonar_run_analysis').handler;
     const tmp = mkdtempSync(join(tmpdir(), 'sonar-test-'));
