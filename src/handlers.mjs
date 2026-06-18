@@ -44,6 +44,7 @@ const TOOL_CATEGORIES = {
   quality: ['sonar_quality_gate', 'sonar_list_quality_gates', 'sonar_measures', 'sonar_search_metrics'],
   coverage: ['sonar_coverage_files', 'sonar_file_coverage_details'],
   duplications: ['sonar_search_duplicated_files', 'sonar_duplications'],
+  worst: ['sonar_worst_metrics'],
   scm: ['sonar_source', 'sonar_scm_info'],
   branches: ['sonar_list_branches', 'sonar_list_pull_requests'],
   admin: ['sonar_list_webhooks', 'sonar_list_languages', 'sonar_ping', 'sonar_setup_scanner', 'sonar_run_analysis'],
@@ -450,6 +451,37 @@ const ALL_TOOLS = [
     projectKey,
     threshold: z.number().optional().describe('Duplication density % threshold (default 3). Files above this value are returned.'),
   }, measureSearch('duplicated_lines_density', 'duplicatedLinesDensity', 3, true)),
+
+  tool('sonar_worst_metrics', 'Find files with the worst metric values across a project — lowest coverage, most duplicated lines, highest complexity. Helps identify hotspots that need attention.', {
+    projectKey,
+    metrics: z.string().optional().describe('Comma-separated metric keys (default: coverage,duplicated_lines_density,cognitive_complexity)'),
+    limit: z.number().optional().describe('Max results per metric (default 10, max 50)'),
+  }, async ({ projectKey, metrics, limit }) => {
+    const key = resolveProjectKey({ projectKey });
+    const metricKeys = metrics || 'coverage,duplicated_lines_density,cognitive_complexity';
+    const max = Math.min(Number(limit) || 10, 50);
+    const data = await sonarGet(`/api/measures/search?projectKeys=${encode(key)}&metricKeys=${encode(metricKeys)}&ps=500`);
+    const grouped = {};
+    for (const m of data.measures || []) {
+      if (m.component === key) continue;
+      const file = m.component.split(':').pop();
+      if (!grouped[file]) grouped[file] = {};
+      grouped[file][m.metric] = Number.parseFloat(m.value);
+    }
+    const results = {};
+    for (const metric of metricKeys.split(',')) {
+      const descending = ['duplicated_lines_density', 'cognitive_complexity', 'complexity', 'violations'];
+      const sign = descending.includes(metric) ? -1 : 1;
+      const entries = Object.entries(grouped)
+        .filter(([, v]) => v[metric] !== undefined)
+        .sort((a, b) => sign * (a[1][metric] - b[1][metric]))
+        .slice(0, max)
+        .map(([path, v]) => ({ path, value: v[metric] }));
+      if (entries.length) results[metric] = entries;
+      else results[metric] = [];
+    }
+    return { projectKey: key, metrics: metricKeys.split(','), results };
+  }),
 
   tool('sonar_duplications', 'Get duplication blocks for a specific file. Returns duplicate blocks grouped by file with line ranges.', {
     key: componentKey,

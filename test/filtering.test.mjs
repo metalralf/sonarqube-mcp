@@ -5,8 +5,8 @@ import { TOOL_CONFIGS } from '../src/handlers.mjs';
 describe('toolset filtering', () => {
   const isFiltered = process.env.SONARQUBE_TOOLSETS || process.env.SONARQUBE_READ_ONLY;
 
-  it('TOOL_CATEGORIES covers all 29 tools when no filtering active', { skip: !!isFiltered }, () => {
-    assert.equal(TOOL_CONFIGS.length, 29);
+  it('TOOL_CATEGORIES covers all 30 tools when no filtering active', { skip: !!isFiltered }, () => {
+    assert.equal(TOOL_CONFIGS.length, 30);
   });
 
   it('read-only mode excludes write tools', { skip: process.env.SONARQUBE_READ_ONLY !== 'true' }, () => {

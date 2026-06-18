@@ -278,6 +278,14 @@ describe('integration', { skip: !TOKEN }, () => {
     assert.equal(res.threshold, 0);
   });
 
+  it('sonar_worst_metrics returns ranked results', async () => {
+    const res = await handler('sonar_worst_metrics')({ projectKey: 'sonarcube_mcp', metrics: 'coverage,duplicated_lines_density', limit: 5 });
+    assert.ok(res.projectKey);
+    assert.ok(Array.isArray(res.metrics));
+    assert.ok(res.results);
+    assert.ok('coverage' in res.results);
+  });
+
   it('sonar_duplications returns data for a file', async () => {
     const res = await handler('sonar_duplications')({ key: 'sonarcube_mcp:src/index.mjs' });
     assert.ok(res.duplications !== undefined);
