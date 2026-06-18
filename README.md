@@ -14,15 +14,15 @@ This project is the **lightweight Node.js alternative**: covers the same REST AP
 
 ## Quick start
 
-> Pin to a specific version: `["npx", "-y", "github:metalralf/sonarqube-mcp@1.2.0"]`  
-> Omit `@1.2.0` for the latest (unstable) development version.
+> Pin to a specific version: `["npx", "-y", "github:metalralf/sonarqube-mcp#1.2.0"]`  
+> Omit `#1.2.0` for the latest (unstable) development version.
 
 ```json
 {
   "mcp": {
     "sonarqube": {
       "type": "local",
-      "command": ["npx", "-y", "github:metalralf/sonarqube-mcp@1.2.0"],
+      "command": ["npx", "-y", "github:metalralf/sonarqube-mcp#1.2.0"],
       "enabled": true,
       "environment": {
         "SONARQUBE_URL": "http://localhost:9000",
