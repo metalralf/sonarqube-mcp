@@ -34,21 +34,24 @@ This project works with **any SonarQube edition** — Cloud, Developer, Enterpri
 ## Tools
 
 | Tool | Purpose |
-|---|---|
+|---|---|---|
 | `sonar_search_projects` | Discover project keys |
 | `sonar_quality_gate` | Gate pass/fail + failing conditions |
 | `sonar_measures` | Bugs, smells, coverage, ratings, ncloc, dup |
-| `sonar_issues` | Open issues sorted by severity |
+| `sonar_issues` | Open issues sorted by severity (`compact`, `statuses`, `include_source`) |
+| `sonar_issues_summary` | Aggregated counts by severity, type, and effort |
+| `sonar_new_issues` | Issues created since the last analysis |
 | `sonar_hotspots` | Security hotspots (needs user token) |
 | `sonar_rule` | Explain a rule (why an issue fired) |
 | `sonar_source` | View flagged source lines |
 | `sonar_analysis_status` | Check if a project has been analyzed, with next steps |
 | `sonar_list_branches` | List branches with analysis dates and quality gate status |
-| `sonar_setup_scanner` | Install sonar-scanner as a devDependency (detects pnpm/yarn/npm) |
+| `sonar_setup_scanner` | Install sonar-scanner (detects pnpm/yarn/npm) |
 | `sonar_run_analysis` | Run sonar-scanner analysis on the project |
 | `sonar_coverage_files` | Find files with coverage below a threshold |
 | `sonar_search_duplicated_files` | Find files with duplication above a threshold |
 | `sonar_duplications` | Get duplication blocks for a specific file |
+| `sonar_set_issue_status` | Mark issues as confirmed, false positive, wontfix, resolved |
 | `sonar_raw` | Escape hatch — any GET endpoint |
 
 For **Claude Code** or other MCP clients, copy `.mcp.json.example` to `.mcp.json` in your project root:
@@ -152,13 +155,20 @@ pnpm exec sonar-scanner -Dsonar.token=squ_...
 
 When acting as an AI agent with these tools available, follow this order:
 
-1. **`sonar_analysis_status`** — first, check if the project has ever been analyzed. If `NOT_FOUND` or `NOT_ANALYZED`, guide the user to run `sonar_setup_scanner` + `sonar_run_analysis`.
-2. **`sonar_quality_gate`** — check if the project passes its quality gate. If `ERROR`, inspect failing conditions to understand what's blocking.
-3. **`sonar_measures`** — get the high-level metrics (coverage, bugs, smells, ratings).
-4. **`sonar_issues`** — drill into specific issues, filtered by severity or type. Start with `CRITICAL`/`BLOCKER`.
-5. **`sonar_rule`** — when you find an issue you don't understand, look up the rule for a plain-English explanation.
-6. **`sonar_source`** — view the flagged source code around an issue to understand the context.
-7. **`sonar_hotspots`** — review security hotspots (only works with `squ_` user tokens).
+1. **`sonar_analysis_status`** — first, check if the project has ever been analyzed. If `UNREACHABLE`, guide the user to start SonarQube. If `NOT_FOUND` or `NOT_ANALYZED`, guide them to run `sonar_setup_scanner` + `sonar_run_analysis`.
+2. **`sonar_quality_gate`** — check if the project passes its quality gate. If `ERROR`, inspect failing conditions.
+3. **`sonar_measures`** — get the high-level metrics (coverage, bugs, smells, ratings, duplication).
+4. **`sonar_list_branches`** — list available branches and pick the relevant one before drilling into issues.
+5. **`sonar_issues`** — drill into specific issues. Use `severities=CRITICAL,BLOCKER` first, then widen. Use `compact: true` to save tokens. Use `statuses: 'OPEN,CONFIRMED'` to exclude already-closed issues. Use `include_source: true` to see surrounding code inline.
+6. **`sonar_issues_summary`** — get quick aggregated counts instead of the full issue list.
+7. **`sonar_new_issues`** — see what was introduced since the last analysis (zero-tolerance delta).
+8. **`sonar_rule`** — when you find an issue you don't understand, look up the rule.
+9. **`sonar_source`** — view the flagged source code around an issue.
+10. **`sonar_coverage_files`** — find specific files with low test coverage to improve.
+11. **`sonar_search_duplicated_files`** — find files with high duplication.
+12. **`sonar_duplications`** — drill into specific duplication blocks to fix them.
+13. **`sonar_hotspots`** — review security hotspots (only works with `squ_` user tokens).
+14. **`sonar_set_issue_status`** — after fixing, mark issues as `resolve` or `falsepositive`/`wontfix` for intentional non-fixes.
 
 If analysis data is missing or the project isn't even on the server, prompt the user to run:
 
