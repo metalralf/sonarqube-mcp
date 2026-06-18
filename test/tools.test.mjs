@@ -29,6 +29,7 @@ describe('tools', () => {
     'sonar_search_metrics',
     'sonar_search_projects',
     'sonar_set_issue_status',
+    'sonar_summary',
     'sonar_setup_scanner',
     'sonar_source',
   ];

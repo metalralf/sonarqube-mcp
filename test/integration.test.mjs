@@ -35,6 +35,16 @@ describe('integration', { skip: !TOKEN }, () => {
     assert.ok(res.health);
   });
 
+  it('sonar_summary returns aggregated project health', async () => {
+    const res = await handler('sonar_summary')({ projectKey: 'sonarcube_mcp' });
+    assert.equal(res.projectKey, 'sonarcube_mcp');
+    assert.ok(res.qualityGate);
+    assert.ok(res.metrics);
+    assert.ok(res.metrics.coverage);
+    assert.equal(typeof res.issues.total, 'number');
+    assert.ok(Array.isArray(res.branches));
+  });
+
   it('sonar_quality_gate returns status', async () => {
     const res = await handler('sonar_quality_gate')({ projectKey: 'sonarcube_mcp' });
     assert.ok(res.projectStatus);

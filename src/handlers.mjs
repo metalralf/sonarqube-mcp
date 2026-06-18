@@ -30,6 +30,38 @@ export const TOOL_CONFIGS = [
   },
 
   {
+    name: 'sonar_summary',
+    description: 'Get an aggregated project health summary in a single call: quality gate, key metrics (bugs, vulnerabilities, code smells, coverage, duplication), issue counts by severity/type, branch info, and coverage.',
+    schema: {
+      projectKey: z.string().optional().describe('Project key (defaults to SONARQUBE_PROJECT)'),
+    },
+    handler: async ({ projectKey: pk }) => {
+      const key = resolveProjectKey({ projectKey: pk });
+      const [quality, measures, issues, branches] = await Promise.all([
+        sonarGet(`/api/qualitygates/project_status?projectKey=${encode(key)}`).catch(() => null),
+        sonarGet(`/api/measures/component?component=${encode(key)}&metricKeys=bugs,vulnerabilities,code_smells,coverage,duplicated_lines_density,ncloc,reliability_rating,security_rating,sqale_rating`).catch(() => null),
+        sonarGet(`/api/issues/search?componentKeys=${encode(key)}&ps=1&resolved=false`).catch(() => null),
+        sonarGet(`/api/project_branches/list?project=${encode(key)}`).catch(() => null),
+      ]);
+      const metricMap = {};
+      for (const m of measures?.component?.measures || []) metricMap[m.metric] = m.value;
+      const severityCounts = {};
+      const typeCounts = {};
+      for (const issue of issues?.issues || []) {
+        severityCounts[issue.severity] = (severityCounts[issue.severity] || 0) + 1;
+        typeCounts[issue.type] = (typeCounts[issue.type] || 0) + 1;
+      }
+      return {
+        projectKey: key,
+        qualityGate: quality?.projectStatus?.status || 'NONE',
+        metrics: metricMap,
+        issues: { total: issues?.total || 0, by_severity: severityCounts, by_type: typeCounts },
+        branches: (branches?.branches || []).map((b) => ({ name: b.name, isMain: b.isMain, analysisDate: b.analysisDate, qg: b.status?.qualityGateStatus })),
+      };
+    },
+  },
+
+  {
     name: 'sonar_quality_gate',
     description: 'Get the SonarQube quality gate status (OK/ERROR) for a project, including each failing condition with metric, actual value, and threshold.',
     schema: {
