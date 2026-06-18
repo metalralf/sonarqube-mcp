@@ -532,6 +532,7 @@ const ALL_TOOLS = [
       grouped[file][m.metric] = Number.parseFloat(m.value);
     }
     const results = {};
+    let anyData = false;
     for (const metric of metricKeys.split(',')) {
       const descending = ['duplicated_lines_density', 'cognitive_complexity', 'complexity', 'violations'];
       const sign = descending.includes(metric) ? -1 : 1;
@@ -540,10 +541,12 @@ const ALL_TOOLS = [
         .sort((a, b) => sign * (a[1][metric] - b[1][metric]))
         .slice(0, max)
         .map(([path, v]) => ({ path, value: v[metric] }));
-      if (entries.length) results[metric] = entries;
+      if (entries.length) { results[metric] = entries; anyData = true; }
       else results[metric] = [];
     }
-    return { projectKey: key, metrics: metricKeys.split(','), results };
+    const out = { projectKey: key, metrics: metricKeys.split(','), results };
+    if (!anyData) out._note = 'No file-level metric data found. Files may lack coverage or measurement data.';
+    return out;
   }),
 
   tool('sonar_duplications', 'Get duplication blocks for a specific file. Returns duplicate blocks grouped by file with line ranges.', {
