@@ -337,4 +337,71 @@ export const TOOL_CONFIGS = [
       return { success: true, output: result };
     },
   },
+
+  {
+    name: 'sonar_list_branches',
+    description: 'List branches for a project with their analysis dates and quality gate status.',
+    schema: {
+      projectKey: z.string().optional().describe('Project key (defaults to SONARQUBE_PROJECT)'),
+    },
+    handler: async ({ projectKey: pk }) => {
+      const key = resolveProjectKey({ projectKey: pk });
+      const data = await sonarGet(`/api/project_branches/list?project=${encode(key)}`);
+      return (data.branches || []).map(({ name, isMain, analysisDate, status }) => ({
+        name, isMain, analysisDate, status: status?.qualityGateStatus,
+      }));
+    },
+  },
+
+  {
+    name: 'sonar_coverage_files',
+    description: 'List files in a project with coverage below a threshold. Useful to find under-tested files.',
+    schema: {
+      projectKey: z.string().optional().describe('Project key (defaults to SONARQUBE_PROJECT)'),
+      threshold: z.number().optional().describe('Coverage % threshold (default 80). Files below this value are returned.'),
+    },
+    handler: async ({ projectKey: pk, threshold }) => {
+      const key = resolveProjectKey({ projectKey: pk });
+      const t = threshold ?? 80;
+      const data = await sonarGet(`/api/measures/search?projectKeys=${encode(key)}&metricKeys=coverage&ps=500`);
+      const files = (data.measures || [])
+        .filter((m) => m.value !== undefined && m.component !== key && m.component)
+        .map((m) => ({ path: m.component.split(':').pop(), coverage: Number.parseFloat(m.value) }))
+        .filter((f) => f.coverage < t)
+        .sort((a, b) => a.coverage - b.coverage);
+      return { total: files.length, threshold: t, files };
+    },
+  },
+
+  {
+    name: 'sonar_search_duplicated_files',
+    description: 'Find files in a project with duplication density above a threshold. Complements sonar_measures duplication metric.',
+    schema: {
+      projectKey: z.string().optional().describe('Project key (defaults to SONARQUBE_PROJECT)'),
+      threshold: z.number().optional().describe('Duplication density % threshold (default 3). Files above this value are returned.'),
+    },
+    handler: async ({ projectKey: pk, threshold }) => {
+      const key = resolveProjectKey({ projectKey: pk });
+      const t = threshold ?? 3;
+      const data = await sonarGet(`/api/measures/search?projectKeys=${encode(key)}&metricKeys=duplicated_lines_density&ps=500`);
+      const files = (data.measures || [])
+        .filter((m) => m.value !== undefined && m.component !== key && m.component)
+        .map((m) => ({ path: m.component.split(':').pop(), duplicatedLinesDensity: Number.parseFloat(m.value) }))
+        .filter((f) => f.duplicatedLinesDensity > t)
+        .sort((a, b) => b.duplicatedLinesDensity - a.duplicatedLinesDensity);
+      return { total: files.length, threshold: t, files };
+    },
+  },
+
+  {
+    name: 'sonar_duplications',
+    description: 'Get duplication blocks for a specific file. Returns duplicate blocks grouped by file with line ranges.',
+    schema: {
+      key: z.string().describe('Full component key (e.g. my-project:src/file.ts)'),
+    },
+    handler: async ({ key }) => {
+      if (!key) throw new Error('key (component key) is required');
+      return sonarGet(`/api/duplications/show?key=${encode(key)}`);
+    },
+  },
 ];

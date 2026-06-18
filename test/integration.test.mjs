@@ -157,6 +157,34 @@ describe('integration', { skip: !TOKEN }, () => {
     );
   });
 
+  it('sonar_list_branches returns branches', async () => {
+    const res = await handler('sonar_list_branches')({ projectKey: 'sonarcube_mcp' });
+    assert.ok(Array.isArray(res));
+    assert.ok(res.length > 0);
+    const main = res.find((b) => b.isMain);
+    assert.ok(main, 'should have a main branch');
+    assert.ok(main.name);
+  });
+
+  it('sonar_coverage_files returns files below threshold', async () => {
+    const res = await handler('sonar_coverage_files')({ projectKey: 'sonarcube_mcp', threshold: 100 });
+    assert.equal(typeof res.total, 'number');
+    assert.ok(Array.isArray(res.files));
+    assert.equal(res.threshold, 100);
+  });
+
+  it('sonar_search_duplicated_files returns files above threshold', async () => {
+    const res = await handler('sonar_search_duplicated_files')({ projectKey: 'sonarcube_mcp', threshold: 0 });
+    assert.equal(typeof res.total, 'number');
+    assert.ok(Array.isArray(res.files));
+    assert.equal(res.threshold, 0);
+  });
+
+  it('sonar_duplications returns data for a file', async () => {
+    const res = await handler('sonar_duplications')({ key: 'sonarcube_mcp:src/index.mjs' });
+    assert.ok(res.duplications !== undefined);
+  });
+
   it('sonarPost authentication validate succeeds', async () => {
     const { sonarPost } = await import('../src/api.mjs');
     const res = await sonarPost('/api/authentication/validate', '');

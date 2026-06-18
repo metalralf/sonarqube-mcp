@@ -43,8 +43,12 @@ This project works with **any SonarQube edition** — Cloud, Developer, Enterpri
 | `sonar_rule` | Explain a rule (why an issue fired) |
 | `sonar_source` | View flagged source lines |
 | `sonar_analysis_status` | Check if a project has been analyzed, with next steps |
+| `sonar_list_branches` | List branches with analysis dates and quality gate status |
 | `sonar_setup_scanner` | Install sonar-scanner as a devDependency (detects pnpm/yarn/npm) |
 | `sonar_run_analysis` | Run sonar-scanner analysis on the project |
+| `sonar_coverage_files` | Find files with coverage below a threshold |
+| `sonar_search_duplicated_files` | Find files with duplication above a threshold |
+| `sonar_duplications` | Get duplication blocks for a specific file |
 | `sonar_raw` | Escape hatch — any GET endpoint |
 
 For **Claude Code** or other MCP clients, copy `.mcp.json.example` to `.mcp.json` in your project root:
