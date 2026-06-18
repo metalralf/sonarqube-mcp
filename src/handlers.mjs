@@ -12,6 +12,25 @@ const projectKey = z.string().optional().describe('Project key (defaults to SONA
 const componentKey = z.string().describe('Full component key (e.g. my-project:src/file.ts)');
 const maxResults = z.number().optional().describe('Max results (default 50, max 500)');
 
+const requireKey = (key) => { if (!key) throw new Error('key (component key) is required'); };
+
+const componentParams = (key, from, to) => {
+  const params = new URLSearchParams({ key });
+  if (from) params.set('from', String(from));
+  if (to) params.set('to', String(to));
+  return params;
+};
+
+const measureSearch = (metricKey, valueKey, defaultThresh, descend) => async ({ projectKey, threshold }) => {
+  const key = resolveProjectKey({ projectKey });
+  const t = threshold ?? defaultThresh;
+  const data = await sonarGet(`/api/measures/search?projectKeys=${encode(key)}&metricKeys=${metricKey}&ps=500`);
+  const extract = (m) => ({ path: m.component.split(':').pop(), [valueKey]: Number.parseFloat(m.value) });
+  const items = (data.measures || []).filter((m) => m.value !== undefined && m.component !== key && m.component);
+  const sorted = items.map(extract).filter((f) => (descend ? f[valueKey] > t : f[valueKey] < t)).sort((a, b) => descend ? b[valueKey] - a[valueKey] : a[valueKey] - b[valueKey]);
+  return { total: items.length, threshold: t, files: sorted };
+};
+
 /**
  * @callback ToolHandler
  * @param {Object} params
@@ -30,7 +49,7 @@ export const TOOL_CONFIGS = [
   }),
 
   tool('sonar_summary', 'Get an aggregated project health summary in a single call: quality gate, key metrics (bugs, vulnerabilities, code smells, coverage, duplication), issue counts by severity/type, branch info, and coverage.', {
-    projectKey: projectKey,
+    projectKey,
   }, async ({ projectKey }) => {
     const key = resolveProjectKey({ projectKey });
     const [quality, measures, issues, branches] = await Promise.all([
@@ -72,7 +91,7 @@ export const TOOL_CONFIGS = [
   }),
 
   tool('sonar_quality_gate', 'Get the SonarQube quality gate status (OK/ERROR) for a project, including each failing condition with metric, actual value, and threshold.', {
-    projectKey: projectKey,
+    projectKey,
   }, async ({ projectKey }) => {
     return sonarGet(`/api/qualitygates/project_status?projectKey=${encode(resolveProjectKey({ projectKey }))}`);
   }),
@@ -83,16 +102,16 @@ export const TOOL_CONFIGS = [
   }),
 
   tool('sonar_measures', 'Get SonarQube metrics for a project: bugs, vulnerabilities, code smells, coverage, duplication, lines of code, and maintainability/security ratings.', {
-    projectKey: projectKey,
+    projectKey,
     metricKeys: z.string().optional().describe('Comma-separated metric keys (default: bugs,vulnerabilities,code_smells,security_hotspots,coverage,duplicated_lines_density,ncloc,reliability_rating,security_rating,sqale_rating)'),
-  }, async ({ projectKey: projectKey, metricKeys }) => {
+  }, async ({ projectKey, metricKeys }) => {
     const key = resolveProjectKey({ projectKey });
     const keys = metricKeys || 'bugs,vulnerabilities,code_smells,security_hotspots,coverage,duplicated_lines_density,ncloc,reliability_rating,security_rating,sqale_rating';
     return sonarGet(`/api/measures/component?component=${encode(key)}&metricKeys=${encode(keys)}`);
   }),
 
   tool('sonar_issues', 'Search SonarQube issues for a project. Returns issues sorted by severity (most severe first). Supports filtering by severity, type, resolution, compact mode, and source embedding.', {
-    projectKey: projectKey,
+    projectKey,
     severities: z.string().optional().describe('Comma-separated: INFO,MINOR,MAJOR,CRITICAL,BLOCKER'),
     types: z.string().optional().describe('Comma-separated: CODE_SMELL,BUG,VULNERABILITY,SECURITY_HOTSPOT'),
     resolved: z.boolean().optional().describe('Include resolved issues (default false)'),
@@ -100,7 +119,7 @@ export const TOOL_CONFIGS = [
     limit: maxResults,
     compact: z.boolean().optional().describe('Strip verbose fields (flows, textRange, messageFormattings) for token efficiency'),
     include_source: z.boolean().optional().describe('Embed source lines for each issue (requires extra API calls)'),
-  }, async ({ projectKey: projectKey, severities, types, resolved, statuses, limit, compact, include_source }) => {
+  }, async ({ projectKey, severities, types, resolved, statuses, limit, compact, include_source }) => {
     const key = resolveProjectKey({ projectKey });
     const params = new URLSearchParams({
       componentKeys: key,
@@ -141,9 +160,9 @@ export const TOOL_CONFIGS = [
   }),
 
   tool('sonar_issues_summary', 'Get aggregated counts of issues by severity and type. Lightweight alternative to sonar_issues — returns only summary stats.', {
-    projectKey: projectKey,
+    projectKey,
     resolved: z.boolean().optional().describe('Include resolved issues in summary (default false)'),
-  }, async ({ projectKey: projectKey, resolved }) => {
+  }, async ({ projectKey, resolved }) => {
     const key = resolveProjectKey({ projectKey });
     const data = await sonarGet(`/api/issues/search?componentKeys=${encode(key)}&ps=500&resolved=${String(Boolean(resolved))}`);
     const bySeverity = {};
@@ -160,12 +179,12 @@ export const TOOL_CONFIGS = [
   }),
 
   tool('sonar_new_issues', 'Get issues created since the last analysis. Useful for seeing what changed after a scan.', {
-    projectKey: projectKey,
+    projectKey,
     severities: z.string().optional().describe('Comma-separated: INFO,MINOR,MAJOR,CRITICAL,BLOCKER'),
     types: z.string().optional().describe('Comma-separated: CODE_SMELL,BUG,VULNERABILITY,SECURITY_HOTSPOT'),
     limit: maxResults,
     compact: z.boolean().optional().describe('Strip verbose fields for token efficiency'),
-  }, async ({ projectKey: projectKey, severities, types, limit, compact }) => {
+  }, async ({ projectKey, severities, types, limit, compact }) => {
     const key = resolveProjectKey({ projectKey });
     const analyses = await sonarGet(`/api/project_analyses/search?project=${encode(key)}&ps=2`).catch(() => null);
     const createdAfter = analyses?.analyses?.[1]?.date || analyses?.analyses?.[0]?.date;
@@ -195,10 +214,10 @@ export const TOOL_CONFIGS = [
   }),
 
   tool('sonar_hotspots', 'Search SonarQube security hotspots for a project. Requires a User token (squ_ prefix) with Browse permission — analysis tokens (sqp_/sqa_) will get a 403 error.', {
-    projectKey: projectKey,
+    projectKey,
     status: z.string().optional().describe('TO_REVIEW or REVIEWED (default TO_REVIEW)'),
     limit: z.number().optional().describe('Max results (default 30, max 500)'),
-  }, async ({ projectKey: projectKey, status, limit }) => {
+  }, async ({ projectKey, status, limit }) => {
     const key = resolveProjectKey({ projectKey });
     const params = new URLSearchParams({
       projectKey: key,
@@ -240,11 +259,8 @@ export const TOOL_CONFIGS = [
     from: z.number().optional().describe('Starting line number (1-indexed)'),
     to: z.number().optional().describe('Ending line number (inclusive)'),
   }, async ({ key, from, to }) => {
-    if (!key) throw new Error('key (component key) is required');
-    const params = new URLSearchParams({ key });
-    if (from) params.set('from', String(from));
-    if (to) params.set('to', String(to));
-    return sonarGet(`/api/sources/scm?${params.toString()}`);
+    requireKey(key);
+    return sonarGet(`/api/sources/scm?${componentParams(key, from, to).toString()}`);
   }),
 
   tool('sonar_search_metrics', 'Search/browse available SonarQube metric definitions, their types, domains, and descriptions.', {
@@ -261,11 +277,8 @@ export const TOOL_CONFIGS = [
     from: z.number().optional().describe('Starting line number (1-indexed)'),
     to: z.number().optional().describe('Ending line number (inclusive)'),
   }, async ({ key, from, to }) => {
-    if (!key) throw new Error('key (component key) is required');
-    const params = new URLSearchParams({ key });
-    if (from) params.set('from', String(from));
-    if (to) params.set('to', String(to));
-    return sonarGet(`/api/sources/lines?${params.toString()}`);
+    requireKey(key);
+    return sonarGet(`/api/sources/lines?${componentParams(key, from, to).toString()}`);
   }),
 
   tool('sonar_list_webhooks', 'List webhooks configured for a project or globally. Useful to verify CI/CD integration with SonarQube.', {
@@ -281,7 +294,7 @@ export const TOOL_CONFIGS = [
   }),
 
   tool('sonar_analysis_status', 'Check if a project has been analyzed on SonarQube. Returns whether analysis data exists and guidance if not.', {
-    projectKey: projectKey,
+    projectKey,
   }, async ({ projectKey }) => {
     const key = resolveProjectKey({ projectKey });
 
@@ -374,7 +387,7 @@ export const TOOL_CONFIGS = [
   }),
 
   tool('sonar_list_pull_requests', 'List pull requests for a project with their branch, title, analysis status, and quality gate status. Note: requires SonarQube Developer Edition or above.', {
-    projectKey: projectKey,
+    projectKey,
   }, async ({ projectKey }) => {
     const key = resolveProjectKey({ projectKey });
     const data = await sonarGet(`/api/project_pull_requests/list?project=${encode(key)}`);
@@ -387,12 +400,12 @@ export const TOOL_CONFIGS = [
   tool('sonar_file_coverage_details', 'Get detailed coverage info for a specific file: line/condition coverage %, uncovered lines and conditions, and total lines/conditions to cover.', {
     key: componentKey,
   }, async ({ key }) => {
-    if (!key) throw new Error('key (component key) is required');
+    requireKey(key);
     return sonarGet(`/api/measures/component?component=${encode(key)}&metricKeys=coverage,uncovered_lines,uncovered_conditions,lines_to_cover,conditions_to_cover,branch_coverage`);
   }),
 
   tool('sonar_list_branches', 'List branches for a project with their analysis dates and quality gate status.', {
-    projectKey: projectKey,
+    projectKey,
   }, async ({ projectKey }) => {
     const key = resolveProjectKey({ projectKey });
     const data = await sonarGet(`/api/project_branches/list?project=${encode(key)}`);
@@ -402,39 +415,19 @@ export const TOOL_CONFIGS = [
   }),
 
   tool('sonar_coverage_files', 'List files in a project with coverage below a threshold. Useful to find under-tested files.', {
-    projectKey: projectKey,
+    projectKey,
     threshold: z.number().optional().describe('Coverage % threshold (default 80). Files below this value are returned.'),
-  }, async ({ projectKey: projectKey, threshold }) => {
-    const key = resolveProjectKey({ projectKey });
-    const t = threshold ?? 80;
-    const data = await sonarGet(`/api/measures/search?projectKeys=${encode(key)}&metricKeys=coverage&ps=500`);
-    const files = (data.measures || [])
-      .filter((m) => m.value !== undefined && m.component !== key && m.component)
-      .map((m) => ({ path: m.component.split(':').pop(), coverage: Number.parseFloat(m.value) }))
-      .filter((f) => f.coverage < t)
-      .sort((a, b) => a.coverage - b.coverage);
-    return { total: files.length, threshold: t, files };
-  }),
+  }, measureSearch('coverage', 'coverage', 80, false)),
 
   tool('sonar_search_duplicated_files', 'Find files in a project with duplication density above a threshold. Complements sonar_measures duplication metric.', {
-    projectKey: projectKey,
+    projectKey,
     threshold: z.number().optional().describe('Duplication density % threshold (default 3). Files above this value are returned.'),
-  }, async ({ projectKey: projectKey, threshold }) => {
-    const key = resolveProjectKey({ projectKey });
-    const t = threshold ?? 3;
-    const data = await sonarGet(`/api/measures/search?projectKeys=${encode(key)}&metricKeys=duplicated_lines_density&ps=500`);
-    const files = (data.measures || [])
-      .filter((m) => m.value !== undefined && m.component !== key && m.component)
-      .map((m) => ({ path: m.component.split(':').pop(), duplicatedLinesDensity: Number.parseFloat(m.value) }))
-      .filter((f) => f.duplicatedLinesDensity > t)
-      .sort((a, b) => b.duplicatedLinesDensity - a.duplicatedLinesDensity);
-    return { total: files.length, threshold: t, files };
-  }),
+  }, measureSearch('duplicated_lines_density', 'duplicatedLinesDensity', 3, true)),
 
   tool('sonar_duplications', 'Get duplication blocks for a specific file. Returns duplicate blocks grouped by file with line ranges.', {
     key: componentKey,
   }, async ({ key }) => {
-    if (!key) throw new Error('key (component key) is required');
+    requireKey(key);
     return sonarGet(`/api/duplications/show?key=${encode(key)}`);
   }),
 ];
