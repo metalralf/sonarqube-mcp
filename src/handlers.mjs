@@ -231,6 +231,20 @@ export const TOOL_CONFIGS = [
   },
 
   {
+    name: 'sonar_search_metrics',
+    description: 'Search/browse available SonarQube metric definitions, their types, domains, and descriptions.',
+    schema: {
+      query: z.string().optional().describe('Optional search query to filter metrics by name or domain'),
+      limit: z.number().optional().describe('Max results (default 50, max 500)'),
+    },
+    handler: async ({ query, limit }) => {
+      const params = new URLSearchParams({ ps: String(Math.min(Number(limit) || 50, 500)) });
+      if (query) params.set('q', query);
+      return sonarGet(`/api/metrics/search?${params.toString()}`);
+    },
+  },
+
+  {
     name: 'sonar_source',
     description: 'View source code lines for a SonarQube file component. Useful to see the context around a flagged issue or hotspot.',
     schema: {

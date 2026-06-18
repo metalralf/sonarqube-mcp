@@ -118,6 +118,15 @@ describe('integration', { skip: !TOKEN }, () => {
     assert.ok(res.issues || res.total === 0);
   });
 
+  it('sonar_search_metrics returns metrics list', async () => {
+    const res = await handler('sonar_search_metrics')({});
+    assert.ok(res.metrics);
+    assert.ok(Array.isArray(res.metrics));
+    assert.ok(res.metrics.length > 0);
+    assert.ok(res.metrics[0].key);
+    assert.ok(res.metrics[0].name);
+  });
+
   it('sonar_raw calls arbitrary endpoint', async () => {
     const res = await handler('sonar_raw')({ path: '/api/system/health' });
     assert.ok(res.health);
