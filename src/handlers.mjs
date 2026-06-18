@@ -62,6 +62,17 @@ export const TOOL_CONFIGS = [
   },
 
   {
+    name: 'sonar_list_languages',
+    description: 'List all programming languages supported by SonarQube with their keys and names.',
+    schema: {
+    },
+    handler: async () => {
+      const data = await sonarGet('/api/languages/list');
+      return data.languages || [];
+    },
+  },
+
+  {
     name: 'sonar_quality_gate',
     description: 'Get the SonarQube quality gate status (OK/ERROR) for a project, including each failing condition with metric, actual value, and threshold.',
     schema: {

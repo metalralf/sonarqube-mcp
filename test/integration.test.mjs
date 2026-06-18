@@ -228,6 +228,14 @@ describe('integration', { skip: !TOKEN }, () => {
     assert.ok(main.name);
   });
 
+  it('sonar_list_languages returns language list', async () => {
+    const res = await handler('sonar_list_languages')({});
+    assert.ok(Array.isArray(res));
+    assert.ok(res.length > 0);
+    assert.ok(res[0].key);
+    assert.ok(res[0].name);
+  });
+
   it('sonar_list_quality_gates returns quality gate list', async () => {
     const res = await handler('sonar_list_quality_gates')({});
     assert.ok(res.qualitygates);
