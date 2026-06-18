@@ -6,6 +6,12 @@ An MCP server that exposes SonarQube data as AI agent tools.
 
 Recommended to wire per-project via `.mcp.json` or `opencode.jsonc` in the project root — different projects have different SonarQube project keys, URLs, and tokens.
 
+### Notes on the official `mcp/sonarqube`
+
+The [official SonarQube MCP Server](https://github.com/SonarSource/sonarqube-mcp-server) by SonarSource is the reference implementation and supports the full SonarQube ecosystem (Cloud, Developer, Enterprise). It integrates deeply with SonarQube for IDE and includes `analyze_code_snippet` for inline code analysis.
+
+This project works with **any SonarQube edition** — Cloud, Developer, Enterprise, and Community. The main motivation was filling a gap: the official server runs on Docker + JVM and targets paid editions, while **Community Edition on localhost** had no lightweight MCP option. This Node.js alternative starts in ~0.1s with no Docker dependency, covers the same API surface, and adds helpers (`sonar_setup_scanner`, `sonar_run_analysis`, `sonar_set_issue_status`, compact mode) that the official read-only API doesn't offer. If you're on Cloud or Enterprise and need `analyze_code_snippet` or SonarQube for IDE integration, the official server is a great fit. For CE on localhost — or if you prefer a fast `npx`-based setup — this project fills the gap.
+
 ## Quick start
 
 ```json
