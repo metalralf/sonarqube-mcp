@@ -18,6 +18,7 @@ describe('tools', () => {
     'sonar_raw',
     'sonar_rule',
     'sonar_run_analysis',
+    'sonar_scm_info',
     'sonar_search_duplicated_files',
     'sonar_search_projects',
     'sonar_set_issue_status',
