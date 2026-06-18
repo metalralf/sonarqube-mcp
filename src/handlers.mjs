@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { execSync } from 'node:child_process';
 import { existsSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { sonarGet, sonarPost, orgQuery, resolveProjectKey, maybeTruncated, getHostUrl } from './api.mjs';
+import { sonarGet, sonarPost, sonarCheckServer, orgQuery, resolveProjectKey, maybeTruncated, getHostUrl } from './api.mjs';
 
 const encode = (v) => encodeURIComponent(v);
 
@@ -220,6 +220,12 @@ export const TOOL_CONFIGS = [
     },
     handler: async ({ projectKey: pk }) => {
       const key = resolveProjectKey({ projectKey: pk });
+
+      const health = await sonarCheckServer();
+      if (!health.reachable) {
+        return { status: 'UNREACHABLE', message: `Cannot reach SonarQube at ${getHostUrl()}.`, hint: health.hint };
+      }
+
       const proj = await sonarGet(`/api/projects/search?q=${encode(key)}&ps=1`).catch(() => null);
       if (!proj?.components?.length) {
         return { status: 'NOT_FOUND', message: `Project "${key}" does not exist on ${getHostUrl()}. Run sonar-scanner first:\n\n  sonar-scanner -Dsonar.login=squ_...\n\nOr create it via the SonarQube UI, then run analysis.` };

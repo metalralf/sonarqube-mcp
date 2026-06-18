@@ -167,6 +167,8 @@ Or if the tools are available, let the agent orchestrate the whole flow automati
 
 **Token tip**: If `sonar_hotspots` returns a 403, tell the user they need a **user token** (`squ_...`), not an analysis token. The user token can do everything the analysis token can plus hotspots.
 
+**Server unreachable?** If tools return connection errors, `sonar_analysis_status` checks server health first and gives contextual guidance — start Docker for localhost, check network for remote URLs.
+
 ### Token types
 
 | Type | Prefix | Hotspots? |
@@ -174,3 +176,7 @@ Or if the tools are available, let the agent orchestrate the whole flow automati
 | User token | `squ_` | ✅ |
 | Project analysis | `sqp_` | ❌ 403 |
 | Global analysis | `sqa_` | ❌ 403 |
+
+## Compatibility
+
+Works with all SonarQube editions (Community, Developer, Enterprise) and SonarCloud. The same REST API is used across all editions. Most tools work with any edition; some advanced features may require Developer Edition or higher.

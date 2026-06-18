@@ -26,9 +26,38 @@ export const sonarPost = async (path, body) => {
   return parsed;
 };
 
+const instanceHint = () => {
+  const url = getHostUrl();
+  try {
+    const { hostname } = new URL(url);
+    if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '0.0.0.0') {
+      return `Is SonarQube running? Start it with:\n  docker run -d --name sonarqube -p 9000:9000 sonarqube:community\n\nOr check your SONARQUBE_URL=${url}`;
+    }
+    return `Is the server at ${url} reachable? Check network, firewall, or DNS.`;
+  } catch {
+    return `SONARQUBE_URL="${url}" is not a valid URL. Set SONARQUBE_URL=http://your-server:9000`;
+  }
+};
+
+export const sonarCheckServer = async () => {
+  try {
+    const res = await fetch(`${getHostUrl()}/api/system/health`, { headers: { authorization: authHeader() }, signal: AbortSignal.timeout(5000) });
+    if (!res.ok) return { reachable: true, status: res.status };
+    const body = await res.json();
+    return { reachable: true, health: body.health };
+  } catch (e) {
+    return { reachable: false, error: e.message, hint: instanceHint() };
+  }
+};
+
 export const sonarGet = async (path) => {
   if (!getToken()) throw new Error('SONARQUBE_TOKEN is not set');
-  const res = await fetch(`${getHostUrl()}${path}`, { headers: { authorization: authHeader() } });
+  let res;
+  try {
+    res = await fetch(`${getHostUrl()}${path}`, { headers: { authorization: authHeader() } });
+  } catch (e) {
+    throw new Error(`Cannot reach SonarQube at ${getHostUrl()} (${e.message}).\n\n${instanceHint()}`);
+  }
   const text = await res.text();
   let body;
   try { body = JSON.parse(text); } catch { body = text; }
