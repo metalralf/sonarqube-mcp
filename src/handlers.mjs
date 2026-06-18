@@ -214,6 +214,24 @@ export const TOOL_CONFIGS = [
   },
 
   {
+    name: 'sonar_change_hotspot_status',
+    description: 'Review a security hotspot: change its status to REVIEWED (with resolution) or back to TO_REVIEW. Requires a User token (squ_ prefix).',
+    schema: {
+      hotspotKey: z.string().describe('Hotspot key (e.g. the "key" field from sonar_hotspots)'),
+      status: z.enum(['TO_REVIEW', 'REVIEWED']).describe('New status: TO_REVIEW to reopen, REVIEWED to mark as reviewed'),
+      resolution: z.enum(['FIXED', 'SAFE', 'ACKNOWLEDGED']).optional().describe('Required when status=REVIEWED: FIXED, SAFE, or ACKNOWLEDGED'),
+      comment: z.string().optional().describe('Optional comment to attach to the review'),
+    },
+    handler: async ({ hotspotKey, status, resolution, comment }) => {
+      if (!hotspotKey) throw new Error('hotspotKey is required');
+      const body = new URLSearchParams({ hotspot: hotspotKey, status });
+      if (resolution) body.set('resolution', resolution);
+      if (comment) body.set('comment', comment);
+      return sonarPost('/api/hotspots/change_status', body.toString());
+    },
+  },
+
+  {
     name: 'sonar_rule',
     description: 'Get detailed information about a specific SonarQube rule: description, severity, type, and remediation guidance.',
     schema: {

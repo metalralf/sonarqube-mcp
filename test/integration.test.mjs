@@ -65,6 +65,20 @@ describe('integration', { skip: !TOKEN }, () => {
     assert.ok(Array.isArray(res.issues));
   });
 
+  it('sonar_change_hotspot_status rejects missing key', async () => {
+    await assert.rejects(
+      () => handler('sonar_change_hotspot_status')({}),
+      /hotspotKey is required/,
+    );
+  });
+
+  it('sonar_change_hotspot_status rejects nonexistent hotspot', async () => {
+    await assert.rejects(
+      () => handler('sonar_change_hotspot_status')({ hotspotKey: 'nonexistent', status: 'REVIEWED', resolution: 'FIXED' }),
+      /SonarQube 400|SonarQube 404/,
+    );
+  });
+
   it('sonar_hotspots returns error hint for non-user tokens', async () => {
     try {
       await handler('sonar_hotspots')({ projectKey: 'sonarcube_mcp' });

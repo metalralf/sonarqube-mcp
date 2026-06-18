@@ -8,6 +8,7 @@ describe('tools', () => {
     'sonar_analysis_status',
     'sonar_coverage_files',
     'sonar_duplications',
+    'sonar_change_hotspot_status',
     'sonar_hotspot_details',
     'sonar_hotspots',
     'sonar_issues',
