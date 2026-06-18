@@ -73,6 +73,20 @@ describe('integration', { skip: !TOKEN }, () => {
     }
   });
 
+  it('sonar_hotspot_details rejects missing key', async () => {
+    await assert.rejects(
+      () => handler('sonar_hotspot_details')({}),
+      /hotspotKey is required/,
+    );
+  });
+
+  it('sonar_hotspot_details rejects nonexistent hotspot', async () => {
+    await assert.rejects(
+      () => handler('sonar_hotspot_details')({ hotspotKey: 'nonexistent' }),
+      /SonarQube 400|SonarQube 404/,
+    );
+  });
+
   it('sonar_rule returns rule details', async () => {
     const res = await handler('sonar_rule')({ ruleKey: 'javascript:S6582' });
     assert.ok(res.rule);

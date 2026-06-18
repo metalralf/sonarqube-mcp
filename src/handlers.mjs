@@ -202,6 +202,18 @@ export const TOOL_CONFIGS = [
   },
 
   {
+    name: 'sonar_hotspot_details',
+    description: 'Get detailed information about a specific security hotspot: rule description, code context, review flows, and comments. Requires a User token (squ_ prefix).',
+    schema: {
+      hotspotKey: z.string().describe('Hotspot key (e.g. the "key" field from sonar_hotspots)'),
+    },
+    handler: async ({ hotspotKey }) => {
+      if (!hotspotKey) throw new Error('hotspotKey is required');
+      return sonarGet(`/api/hotspots/show?hotspot=${encode(hotspotKey)}`);
+    },
+  },
+
+  {
     name: 'sonar_rule',
     description: 'Get detailed information about a specific SonarQube rule: description, severity, type, and remediation guidance.',
     schema: {
