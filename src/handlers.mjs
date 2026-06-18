@@ -246,7 +246,7 @@ const ALL_TOOLS = [
     projectKey,
     status: z.string().optional().describe('TO_REVIEW or REVIEWED (default TO_REVIEW)'),
     limit: z.number().optional().describe('Max results (default 30, max 500)'),
-  }, async ({ projectKey: projectKey, status, limit }) => {
+  }, async ({ projectKey, status, limit }) => {
     const token = process.env.SONARQUBE_TOKEN || '';
     if (token && !token.startsWith('squ_')) {
       throw new Error('Hotspots require a User token (squ_ prefix). Current token starts with "' + token.slice(0, 4) + '...". Generate a user token at SonarQube > My Account > Security.');
