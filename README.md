@@ -6,36 +6,6 @@ An MCP server that exposes SonarQube data as AI agent tools. **34 tools** — th
 
 > **Works with any SonarQube edition** — Cloud, Developer, Enterprise, and **Community Edition on localhost**. No Docker/JVM needed, starts in ~0.1s.
 
-### What other MCPs don't have
-
-| Feature | Us | Official (SonarSource) | sapientpants (archived) | SertayKabuk | dozzman |
-|---------|:--:|:----------------------:|:-----------------------:|:-----------:|:-------:|
-| Issue write operations | ✅ | ✅ | ❌ | ❌ | ❌ |
-| Compact mode (token saver) | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Issue delta (`new_issues`) | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Aggregated summary | ✅ | ❌ | ❌ | ❌ | ✅ |
-| Worst-metric ranking | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Metric history / trends | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Hotspot status changes | ✅ | ✅ | ❌ | ❌ | ❌ |
-| SCM blame info | ✅ | ✅ | ❌ | ❌ | ❌ |
-| Bulk issue transitions | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Project creation via MCP | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Run scanner from agent | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Write tools (set issue/hotspot status) | ✅ | ✅ | ❌ | ❌ | ❌ |
-| Toolset filtering | ✅ | ✅ | ❌ | ❌ | ❌ |
-| Read-only mode | ✅ | ✅ | ❌ | ❌ | ❌ |
-| HTTP transport | ✅ | ✅ | ❌ | ❌ | ❌ |
-| Source coverage highlights | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Array param support | ✅ | ❌ | ❌ | ❌ | ❌ |
-
-**34 unique tools** — 12 features no other non-official MCP has, 3 features even the official one doesn't.
-
-### Comparison with the official `mcp/sonarqube`
-
-The [official SonarQube MCP Server](https://github.com/SonarSource/sonarqube-mcp-server) (Java/Docker, 580 stars) supports `analyze_code_snippet`, IDE integration, full Context Augmentation, and streamable HTTP transport — but requires Docker, the JVM, and paid editions for many features.
-
-This project is the **lightweight Node.js alternative**: covers the same REST API surface with **34 tools** (vs ~45 in official), adds unique features (compact mode, delta issues, trend data, worst-metrics, bulk transitions, project creation), all in ~0.1s with no container overhead.
-
 ## Quick start
 
 > Pin to a specific version: `["npx", "-y", "github:metalralf/sonarqube-mcp#1.3.3"]`  
@@ -287,6 +257,43 @@ Run:
 ```bash
 pnpm exec sonar-scanner -Dsonar.token=squ_...
 ```
+
+## Ecosystem Comparison
+
+### vs Other MCP Servers
+
+| Feature | Us | Official (SonarSource) | sapientpants | SertayKabuk | dozzman |
+|---------|:--:|:----------------------:|:------------:|:-----------:|:-------:|
+| **Unique tools** | **34** | ~45 | ~18 | 3 | 2 |
+| Issue write ops | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Hotspot status changes | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Compact mode | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Issue delta (`new_issues`) | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Aggregated summary | ✅ | ❌ | ❌ | ❌ | ✅ |
+| Metric history/trends | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Worst-metric ranking | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Bulk issue transitions | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Project creation via MCP | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Run scanner from agent | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Source coverage highlights | ✅ | ❌ | ❌ | ❌ | ❌ |
+| SCM blame info | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Toolset filtering | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Read-only mode | ✅ | ✅ | ❌ | ❌ | ❌ |
+| HTTP transport | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Array param support | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Zero Docker / zero JVM | ✅ | ❌ | ✅ | ✅ | ✅ |
+
+### vs Official mcp/sonarqube
+
+| Aspect | Official (SonarSource) | Ours |
+|--------|----------------------|------|
+| **Runtime** | Java + Docker (~500MB image) | Node.js (~0.1s start, no Docker) |
+| **Edition support** | Cloud / Developer / Enterprise | **All** including Community |
+| **Distribution** | Docker Hub | `npx` / GitHub |
+| **Unique to us** | — | compact mode, delta issues, trend data, worst-metrics, bulk transitions, project creation, coverage highlights, array params |
+| **Unique to official** | `analyze_code_snippet`, IDE integration, Context Augmentation | — |
+
+Choose official if you need inline code analysis, IDE integration, or run on Cloud/Enterprise. Choose ours if you're on Community Edition, want zero-overhead startup, or need the unique tools above.
 
 ## Compatibility
 
