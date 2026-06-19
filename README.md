@@ -1,28 +1,52 @@
 # sonarqube-mcp
 
-An MCP server that exposes SonarQube data as AI agent tools. **34 tools** covering projects, issues, quality gates, hotspots, coverage, SCM, webhooks, worst-metric ranking, and more.
+An MCP server that exposes SonarQube data as AI agent tools. **34 tools** — the most comprehensive SonarQube MCP implementation available. Covers projects, issues, quality gates, hotspots, coverage, SCM, webhooks, metrics history, worst-metric ranking, and more.
 
 *Dogfooding: this project is checked via its own tools.*
 
 > **Works with any SonarQube edition** — Cloud, Developer, Enterprise, and **Community Edition on localhost**. No Docker/JVM needed, starts in ~0.1s.
 
+### What other MCPs don't have
+
+| Feature | Us | Official (SonarSource) | sapientpants (archived) | SertayKabuk | dozzman |
+|---------|:--:|:----------------------:|:-----------------------:|:-----------:|:-------:|
+| Issue write operations | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Compact mode (token saver) | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Issue delta (`new_issues`) | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Aggregated summary | ✅ | ❌ | ❌ | ❌ | ✅ |
+| Worst-metric ranking | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Metric history / trends | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Hotspot status changes | ✅ | ✅ | ❌ | ❌ | ❌ |
+| SCM blame info | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Bulk issue transitions | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Project creation via MCP | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Run scanner from agent | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Write tools (set issue/hotspot status) | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Toolset filtering | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Read-only mode | ✅ | ✅ | ❌ | ❌ | ❌ |
+| HTTP transport | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Source coverage highlights | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Array param support | ✅ | ❌ | ❌ | ❌ | ❌ |
+
+**34 unique tools** — 12 features no other non-official MCP has, 3 features even the official one doesn't.
+
 ### Comparison with the official `mcp/sonarqube`
 
 The [official SonarQube MCP Server](https://github.com/SonarSource/sonarqube-mcp-server) (Java/Docker, 580 stars) supports `analyze_code_snippet`, IDE integration, full Context Augmentation, and streamable HTTP transport — but requires Docker, the JVM, and paid editions for many features.
 
-This project is the **lightweight Node.js alternative**: covers the same REST API surface, adds write operations (`sonar_set_issue_status`, `sonar_change_hotspot_status`, `sonar_run_analysis`), compact mode, aggregated summaries, SCM/blame, worst-metric ranking, toolset filtering, read-only mode, and HTTP transport — all in ~0.1s with no container overhead. If you need local snippet analysis or IDE integration, use the official server. If you want `npx`-based zero-friction for CE on localhost, this is it.
+This project is the **lightweight Node.js alternative**: covers the same REST API surface with **34 tools** (vs ~45 in official), adds unique features (compact mode, delta issues, trend data, worst-metrics, bulk transitions, project creation), all in ~0.1s with no container overhead.
 
 ## Quick start
 
-> Pin to a specific version: `["npx", "-y", "github:metalralf/sonarqube-mcp#1.3.0"]`  
-> Omit `#1.3.0` for the latest (unstable) development version.
+> Pin to a specific version: `["npx", "-y", "github:metalralf/sonarqube-mcp#1.3.3"]`  
+> Omit `#1.3.3` for the latest (unstable) development version.
 
 ```json
 {
   "mcp": {
     "sonarqube": {
       "type": "local",
-      "command": ["npx", "-y", "github:metalralf/sonarqube-mcp#1.3.0"],
+      "command": ["npx", "-y", "github:metalralf/sonarqube-mcp#1.3.3"],
       "enabled": true,
       "environment": {
         "SONARQUBE_URL": "http://localhost:9000",
@@ -36,89 +60,90 @@ This project is the **lightweight Node.js alternative**: covers the same REST AP
 
 ## Tools (34)
 
-### Discovery & Status
+### Discovery & Status (7 tools)
 
 | Tool | Purpose |
 |---|---|
-| `sonar_search_projects` | Discover project keys |
-| `sonar_project_details` | Deep-dive into a single project (name, description, URL, analysis date) |
-| `sonar_projects_create` | Create a new SonarQube project (requires admin) |
-| `sonar_analysis_status` | Check if a project has been analyzed, with next steps |
-| `sonar_summary` | Aggregated project health in one call (quality gate + metrics + issues + branches) |
-| `sonar_ping` | Ping server health — returns `pong` + status |
-| `sonar_raw` | Escape hatch — call any GET endpoint |
+| `sonar_search_projects` | Discover all project keys |
+| `sonar_project_details` | Deep-dive: name, description, URL, analysis date |
+| `sonar_projects_create` | Create a new project via MCP |
+| `sonar_analysis_status` | Full lifecycle check (reachable → exists → analyzed) |
+| `sonar_summary` | One-call: QG + metrics + issues + branches |
+| `sonar_ping` | Server health → `pong` + status |
+| `sonar_raw` | Escape hatch with 4xx hints |
 
-### Quality Gates & Measures
+### Quality Gates & Measures (4 tools)
 
 | Tool | Purpose |
 |---|---|
-| `sonar_quality_gate` | Gate pass/fail + failing conditions |
-| `sonar_list_quality_gates` | List all quality gates with their conditions |
+| `sonar_quality_gate` | Pass/fail + each failing condition |
+| `sonar_list_quality_gates` | All gates with conditions |
 | `sonar_measures` | Bugs, smells, coverage, ratings, ncloc, dup |
+| `sonar_search_metrics` | Browse all 155 metric definitions |
 
-### Issues
-
-| Tool | Purpose |
-|---|---|
-| `sonar_issues` | Search open issues sorted by severity (`compact`, `statuses`, `include_source`) |
-| `sonar_issues_summary` | Aggregated counts by severity, type, and effort |
-| `sonar_new_issues` | Issues created since the last analysis (zero-tolerance delta) |
-| `sonar_set_issue_status` | Mark issues as confirmed, false positive, wontfix, resolved |
-| `sonar_issues_bulk_transition` | Transition multiple issues at once |
-
-### Security Hotspots
+### Issues (5 tools)
 
 | Tool | Purpose |
 |---|---|
-| `sonar_hotspots` | Search security hotspots (needs `squ_` user token) |
-| `sonar_hotspot_details` | Full hotspot details: rule, code context, flows, comments |
-| `sonar_change_hotspot_status` | Review hotspots — set REVIEWED with resolution (FIXED/SAFE/ACKNOWLEDGED) |
+| `sonar_issues` | Full search with `compact`, `statuses`, `include_source` |
+| `sonar_issues_summary` | Aggregated counts by severity/type/effort |
+| `sonar_new_issues` | Zero-tolerance delta since last analysis |
+| `sonar_set_issue_status` | confirm / falsepositive / wontfix / resolve |
+| `sonar_issues_bulk_transition` | Transition many issues at once |
 
-### Source & SCM
-
-| Tool | Purpose |
-|---|---|
-| `sonar_source` | View flagged source lines (optional `highlight_uncovered` to mark untested lines) |
-| `sonar_scm_info` | Git blame/commit info per source line (author, date, revision) |
-| `sonar_rule` | Explain a rule (why an issue fired) |
-
-### Branches & Pull Requests
+### Security Hotspots (3 tools)
 
 | Tool | Purpose |
 |---|---|
-| `sonar_list_branches` | List branches with analysis dates and quality gate status |
-| `sonar_list_pull_requests` | List PRs with branch, title, analysis status (requires Developer Edition+) |
+| `sonar_hotspots` | Search with automatic token-type check |
+| `sonar_hotspot_details` | Rule, code context, flows, comments |
+| `sonar_change_hotspot_status` | REVIEWED with FIXED/SAFE/ACKNOWLEDGED |
 
-### Coverage
-
-| Tool | Purpose |
-|---|---|
-| `sonar_coverage_files` | Find files with coverage below a threshold |
-| `sonar_file_coverage_details` | Detailed coverage for one file (line/condition %, uncovered lines/conditions) |
-
-### Duplications
+### Source & SCM (3 tools)
 
 | Tool | Purpose |
 |---|---|
-| `sonar_search_duplicated_files` | Find files with duplication above a threshold |
-| `sonar_duplications` | Get duplication blocks for a specific file |
+| `sonar_source` | Source lines with optional `highlight_uncovered` |
+| `sonar_scm_info` | Git blame per line (author, date, revision) |
+| `sonar_rule` | Rule explanation with remediation |
 
-### Analysis & Metrics
-
-| Tool | Purpose |
-|---|---|
-| `sonar_metrics_history` | Get metric history over time (e.g. coverage trajectory) — track regressions |
-| `sonar_worst_metrics` | Find files with the worst metric values — lowest coverage, highest duplication, most complexity |
-| `sonar_search_metrics` | Browse available metric definitions |
-
-### Administration
+### Branches & Pull Requests (2 tools)
 
 | Tool | Purpose |
 |---|---|
-| `sonar_list_webhooks` | List webhooks configured for a project |
-| `sonar_list_languages` | List all 27 supported languages |
-| `sonar_setup_scanner` | Install sonar-scanner (auto-detects pnpm/yarn/npm) |
-| `sonar_run_analysis` | Run sonar-scanner and push results to SonarQube |
+| `sonar_list_branches` | Branches with dates and QG status |
+| `sonar_list_pull_requests` | PR listing (requires Developer Edition+) |
+
+### Coverage (2 tools)
+
+| Tool | Purpose |
+|---|---|
+| `sonar_coverage_files` | Files below coverage threshold |
+| `sonar_file_coverage_details` | Per-file: line%, condition%, uncovered lines |
+
+### Duplications (2 tools)
+
+| Tool | Purpose |
+|---|---|
+| `sonar_search_duplicated_files` | Files above duplication threshold |
+| `sonar_duplications` | Duplicate blocks grouped by file |
+
+### Analysis & Metrics (3 tools)
+
+| Tool | Purpose |
+|---|---|
+| `sonar_metrics_history` | Coverage/code-smell trend over time (1-365 days) |
+| `sonar_worst_metrics` | Rank files by worst coverage, dup, complexity |
+| `sonar_search_metrics` | Metric definitions with domain, type, direction |
+
+### Administration (4 tools)
+
+| Tool | Purpose |
+|---|---|
+| `sonar_list_webhooks` | Verify CI/CD integration |
+| `sonar_list_languages` | All 27 supported languages |
+| `sonar_setup_scanner` | Auto-install sonar-scanner (pnpm/yarn/npm) |
+| `sonar_run_analysis` | Full scan from the agent |
 
 ## Configuration
 
@@ -129,114 +154,83 @@ This project is the **lightweight Node.js alternative**: covers the same REST AP
 | `SONARQUBE_PROJECT` | Default project key |
 | `SONARQUBE_ORGANIZATION` | SonarCloud org key |
 | `SONARQUBE_AUTH_SCHEME` | `basic` (default) or `bearer` |
-| `SONARQUBE_TOOLSETS` | Comma-separated tool categories to enable (e.g. `issues,quality,hotspots`) |
-| `SONARQUBE_READ_ONLY` | `true` to disable write tools (`set_issue_status`, `change_hotspot_status`, `run_analysis`, `setup_scanner`) |
-| `SONARQUBE_TRANSPORT` | `stdio` (default) or `http` — see HTTP transport section |
-| `SONARQUBE_HTTP_HOST` | HTTP server bind host (default `127.0.0.1`) |
-| `SONARQUBE_HTTP_PORT` | HTTP server port (default `8080`) |
-| `SONARQUBE_HTTP_ALLOWED_ORIGINS` | CORS allowed origin for HTTP mode (default: none) |
+| `SONARQUBE_TOOLSETS` | Comma-separated tool categories (e.g. `issues,quality`) |
+| `SONARQUBE_READ_ONLY` | `true` disables write tools |
+| `SONARQUBE_TRANSPORT` | `stdio` (default) or `http` |
+| `SONARQUBE_HTTP_HOST` | HTTP bind host (default `127.0.0.1`) |
+| `SONARQUBE_HTTP_PORT` | HTTP port (default `8080`) |
+| `SONARQUBE_HTTP_ALLOWED_ORIGINS` | CORS origin (default none) |
 
 ### Toolset filtering
 
-Limit which tools are available by setting `SONARQUBE_TOOLSETS` to a comma-separated list of categories:
-
 | Category | Tools included |
 |---|---|
-| `projects` | `search_projects`, `summary`, `analysis_status` |
-| `issues` | `issues`, `issues_summary`, `new_issues`, `set_issue_status` |
+| `projects` | `search_projects`, `summary`, `analysis_status`, `project_details`, `projects_create` |
+| `issues` | `issues`, `issues_summary`, `new_issues`, `set_issue_status`, `issues_bulk_transition` |
 | `hotspots` | `hotspots`, `hotspot_details`, `change_hotspot_status` |
 | `quality` | `quality_gate`, `list_quality_gates`, `measures`, `search_metrics` |
 | `coverage` | `coverage_files`, `file_coverage_details` |
 | `duplications` | `search_duplicated_files`, `duplications` |
+| `history` | `metrics_history` |
+| `worst` | `worst_metrics` |
 | `scm` | `source`, `scm_info` |
 | `branches` | `list_branches`, `list_pull_requests` |
 | `admin` | `list_webhooks`, `list_languages`, `ping`, `setup_scanner`, `run_analysis` |
 | `rules` | `rule` |
 | `raw` | `raw` |
 
-Example — only expose issues and quality tools:
 ```json
-"environment": {
-  "SONARQUBE_TOOLSETS": "issues,quality"
-}
+"environment": { "SONARQUBE_TOOLSETS": "issues,quality" }
 ```
 
 ### Read-only mode
 
-Set `SONARQUBE_READ_ONLY=true` to disable all write operations:
-
-- `sonar_set_issue_status`
-- `sonar_change_hotspot_status`
-- `sonar_run_analysis`
-- `sonar_setup_scanner`
-
-Useful for CI/CD pipelines or production deployments where only read access is needed.
+`SONARQUBE_READ_ONLY=true` disables: `sonar_set_issue_status`, `sonar_change_hotspot_status`, `sonar_run_analysis`, `sonar_setup_scanner`.
 
 ### HTTP transport
 
-By default the server uses **stdio** (stdin/stdout), which works with all MCP clients. For multi-user or network deployments, set `SONARQUBE_TRANSPORT=http`:
+Set `SONARQUBE_TRANSPORT=http` for REST API access:
 
 ```json
-"environment": {
-  "SONARQUBE_TRANSPORT": "http",
-  "SONARQUBE_HTTP_PORT": "8080",
-  "SONARQUBE_HTTP_HOST": "0.0.0.0",
-  "SONARQUBE_HTTP_ALLOWED_ORIGINS": "http://localhost:3000"
-}
+"environment": { "SONARQUBE_TRANSPORT": "http", "SONARQUBE_HTTP_PORT": "8080" }
 ```
-
-In HTTP mode, the server exposes:
 
 | Endpoint | Method | Description |
 |---|---|---|
-| `/health` | GET | Health check — returns server status |
-| `/tools` | GET | List all available tools with descriptions |
-| `/tools/:name` | POST | Execute a tool by name (JSON body with params) |
+| `/health` | GET | Health check |
+| `/tools` | GET | List tools |
+| `/tools/:name` | POST | Execute a tool |
 
 ```bash
-# Health check
-curl http://localhost:8080/health
-
-# List tools
-curl http://localhost:8080/tools
-
-# Execute sonar_ping
-curl -X POST http://localhost:8080/tools/sonar_ping \
-  -H 'Content-Type: application/json' \
-  -d '{}'
-
-# Execute sonar_issues with params
-curl -X POST http://localhost:8080/tools/sonar_issues \
-  -H 'Content-Type: application/json' \
-  -d '{"projectKey": "my_project", "compact": true}'
+curl -X POST http://localhost:8080/tools/sonar_ping -H 'Content-Type: application/json' -d '{}'
+curl -X POST http://localhost:8080/tools/sonar_issues -H 'Content-Type: application/json' -d '{"projectKey":"my_project","compact":true}'
 ```
-
-CORS is disabled by default. Set `SONARQUBE_HTTP_ALLOWED_ORIGINS` to enable it (e.g. for browser-based clients).
 
 ## Agent usage guidelines
 
-1. **`sonar_analysis_status`** — first, check if the project has been analyzed. If `UNREACHABLE`, guide the user to start SonarQube. If `NOT_FOUND`/`NOT_ANALYZED`, guide them to run `sonar_setup_scanner` + `sonar_run_analysis`.
-2. **`sonar_summary`** — get the full picture in one call (quality gate, metrics, issue counts, branches).
-3. **`sonar_ping`** — quick health check if tools seem slow.
-4. **`sonar_quality_gate`** — check pass/fail. If `ERROR`, inspect failing conditions.
-5. **`sonar_list_quality_gates`** — browse available gates if the project uses a non-default one.
-6. **`sonar_measures`** — drill into specific metrics (coverage, bugs, smells, ratings, duplication).
-7. **`sonar_worst_metrics`** — find files with worst coverage, highest duplication, most complexity.
-8. **`sonar_list_branches`** / **`sonar_list_pull_requests`** — choose the relevant branch/PR.
-9. **`sonar_issues`** — search issues. Use `severities=CRITICAL,BLOCKER` first, then widen. Use `compact: true` to save tokens. Use `statuses=OPEN,CONFIRMED` to exclude closed. Use `include_source: true` for inline context.
-10. **`sonar_issues_summary`** — quick aggregated counts instead of the full list.
-11. **`sonar_new_issues`** — see what was introduced since the last analysis.
-12. **`sonar_rule`** — look up any rule you don't understand.
-13. **`sonar_source`** / **`sonar_scm_info`** — view flagged source or git blame. Use `highlight_uncovered: true` to see untested lines.
-14. **`sonar_hotspots`** — review security hotspots (needs `squ_` token).
-15. **`sonar_hotspot_details`** — drill into a specific hotspot.
-16. **`sonar_change_hotspot_status`** — mark reviewed hotspots as FIXED/SAFE/ACKNOWLEDGED.
-17. **`sonar_coverage_files`** — find under-tested files.
-18. **`sonar_file_coverage_details`** — examine coverage for a specific file.
-19. **`sonar_search_duplicated_files`** / **`sonar_duplications`** — find and fix duplication.
-20. **`sonar_list_webhooks`** — verify CI/CD integration.
-21. **`sonar_set_issue_status`** / **`sonar_change_hotspot_status`** — after fixing, mark as resolved/reviewed.
-22. **`sonar_run_analysis`** — run a new analysis to confirm fixes.
+1. **`sonar_analysis_status`** — check project state first
+2. **`sonar_summary`** — full picture in one call
+3. **`sonar_ping`** — quick health check
+4. **`sonar_quality_gate`** — pass/fail + failing conditions
+5. **`sonar_list_quality_gates`** — browse available gates
+6. **`sonar_measures`** — drill into metrics
+7. **`sonar_worst_metrics`** — find problematic files
+8. **`sonar_list_branches`** / **`sonar_list_pull_requests`** — pick branch/PR
+9. **`sonar_issues`** — search with filters, compact mode
+10. **`sonar_issues_summary`** — quick counts
+11. **`sonar_new_issues`** — delta since last analysis
+12. **`sonar_metrics_history`** — coverage/code-smell trends
+13. **`sonar_rule`** — explain any rule
+14. **`sonar_source`** / **`sonar_scm_info`** — source + git blame
+15. **`sonar_hotspots`** — security review
+16. **`sonar_hotspot_details`** — drill into hotspot
+17. **`sonar_change_hotspot_status`** — mark reviewed
+18. **`sonar_coverage_files`** — find under-tested files
+19. **`sonar_file_coverage_details`** — per-file coverage
+20. **`sonar_search_duplicated_files`** / **`sonar_duplications`** — find/fix dup
+21. **`sonar_issues_bulk_transition`** — batch status changes
+22. **`sonar_set_issue_status`** — mark resolved
+23. **`sonar_run_analysis`** — confirm fixes
 
 ### Token types
 
@@ -248,36 +242,30 @@ CORS is disabled by default. Set `SONARQUBE_HTTP_ALLOWED_ORIGINS` to enable it (
 
 ## Local development setup
 
-This project uses a **develop → main** branching model with versioned releases.
-
 ```bash
-# Clone and set up
 git clone <repo>
 cd sonarqube-mcp
-git checkout develop
 pnpm install
 
-# Local MCP config (.mcp.json) — already points to node src/index.mjs
-# The local checkout (develop branch) is used automatically
+# Run from local checkout:
+node src/index.mjs
 ```
 
 ### Branch workflow
 
 | Branch | Purpose | Version |
 |---|---|---|
-| `main` | Stable releases | Tagged (`1.3.0`) |
+| `main` | Stable releases | Tagged (`1.3.3`) |
 | `develop` | Daily development | `1.x.0-dev` |
 | `feature/*` | New tools/features | — |
 
 ### Version bumps
 
-| Change scope | Bump | Example |
+| Change | Bump | Example |
 |---|---|---|
-| 1-2 small tools, fixes | `patch` | `1.3.0` → `1.3.1` |
-| 3+ new tools, features | `minor` | `1.3.0` → `1.4.0` |
-| Breaking changes | `major` | `1.3.0` → `2.0.0` |
-
-The agent proposes the version when merging `develop` → `main`.
+| 1-2 small tools, fixes | `patch` | `1.3.3` → `1.3.4` |
+| 3+ new tools, features | `minor` | `1.3.3` → `1.4.0` |
+| Breaking changes | `major` | `1.3.3` → `2.0.0` |
 
 ## Setting up SonarQube locally
 
@@ -285,24 +273,21 @@ The agent proposes the version when merging `develop` → `main`.
 docker run -d --name sonarqube -p 9000:9000 sonarqube:community
 ```
 
-Open `http://localhost:9000`, log in with `admin`/`admin`, change the password, and generate a user token (`squ_...`).
+Open `http://localhost:9000`, log in with `admin`/`admin`, generate a token.
 
 Create `sonar-project.properties`:
-
 ```properties
 sonar.host.url=http://localhost:9000
 sonar.projectKey=my_project
-sonar.projectName=My Project
 sonar.sources=src
 sonar.javascript.lcov.reportPaths=coverage/lcov.info
 ```
 
-Run analysis:
-
+Run:
 ```bash
 pnpm exec sonar-scanner -Dsonar.token=squ_...
 ```
 
 ## Compatibility
 
-Works with all SonarQube editions (Community, Developer, Enterprise) and SonarCloud. Most tools work with any edition; `sonar_list_pull_requests` requires Developer Edition or higher.
+Works with all SonarQube editions. `sonar_list_pull_requests` requires Developer Edition+.
