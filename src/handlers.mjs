@@ -3,7 +3,7 @@ import { execSync } from 'node:child_process';
 import { existsSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { z } from 'zod';
-import { tool, projectKey, componentKey, maxResults, encode, requireKey, componentParams, measureSearch, getHostUrl, filterTools, sonarGet, sonarPost, sonarCheckServer, orgQuery, resolveProjectKey, maybeTruncated } from './helpers.mjs';
+import { tool, projectKey, componentKey, maxResults, encode, requireKey, componentParams, measureSearch, parseIssueFacets, getHostUrl, filterTools, sonarGet, sonarPost, sonarCheckServer, orgQuery, resolveProjectKey, maybeTruncated } from './helpers.mjs';
 
 const ALL_TOOLS = [
   tool('sonar_projects_create', 'Create a new project in SonarQube. Requires admin permissions.', {
@@ -46,12 +46,7 @@ const ALL_TOOLS = [
     ]);
     const metricMap = {};
     for (const m of measures?.component?.measures || []) metricMap[m.metric] = m.value;
-    const bySeverity = {};
-    const byType = {};
-    for (const f of issueData?.facets || []) {
-      if (f.property === 'severities') for (const v of f.values) if (v.count > 0) bySeverity[v.val] = v.count;
-      if (f.property === 'types') for (const v of f.values) if (v.count > 0) byType[v.val] = v.count;
-    }
+    const { bySeverity, byType } = parseIssueFacets(issueData);
     return {
       projectKey: key,
       qualityGate: quality?.projectStatus?.status || 'NONE',

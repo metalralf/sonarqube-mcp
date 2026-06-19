@@ -57,6 +57,21 @@ export const componentParams = (key, from, to) => {
 };
 
 /**
+ * @param {any} issueData — response from /api/issues/search
+ * @returns {{ bySeverity: Record<string, number>, byType: Record<string, number> }}
+ */
+export const parseIssueFacets = (issueData) => {
+  const bySeverity = {};
+  const byType = {};
+  for (const f of issueData?.facets || []) {
+    if (f.property !== 'severities' && f.property !== 'types') continue;
+    const target = f.property === 'severities' ? bySeverity : byType;
+    for (const v of f.values) if (v.count > 0) target[v.val] = v.count;
+  }
+  return { bySeverity, byType };
+};
+
+/**
  * @param {string} metricKey
  * @param {string} valueKey
  * @param {number} defaultThresh
