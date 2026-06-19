@@ -260,28 +260,20 @@ pnpm exec sonar-scanner -Dsonar.token=squ_...
 
 ## Ecosystem Comparison
 
-### vs Other MCP Servers
+### What makes this project unique
 
-| Feature | Us | Official (SonarSource) | sapientpants | SertayKabuk | dozzman |
-|---------|:--:|:----------------------:|:------------:|:-----------:|:-------:|
-| **Unique tools** | **34** | ~45 | ~18 | 3 | 2 |
-| Issue write ops | ✅ | ✅ | ❌ | ❌ | ❌ |
-| Hotspot status changes | ✅ | ✅ | ❌ | ❌ | ❌ |
-| Compact mode | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Issue delta (`new_issues`) | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Aggregated summary | ✅ | ❌ | ❌ | ❌ | ✅ |
-| Metric history/trends | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Worst-metric ranking | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Bulk issue transitions | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Project creation via MCP | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Run scanner from agent | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Source coverage highlights | ✅ | ❌ | ❌ | ❌ | ❌ |
-| SCM blame info | ✅ | ✅ | ❌ | ❌ | ❌ |
-| Toolset filtering | ✅ | ✅ | ❌ | ❌ | ❌ |
-| Read-only mode | ✅ | ✅ | ❌ | ❌ | ❌ |
-| HTTP transport | ✅ | ✅ | ❌ | ❌ | ❌ |
-| Array param support | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Zero Docker / zero JVM | ✅ | ❌ | ✅ | ✅ | ✅ |
+Features no other SonarQube MCP implementation has:
+- **Compact mode** — strips verbose fields for LLM token efficiency
+- **Issue delta** — `sonar_new_issues` since last analysis
+- **Metric history / trends** — coverage and code-smell trajectory
+- **Worst-metric ranking** — find files with worst coverage, highest duplication
+- **Bulk issue transitions** — transition many issues at once
+- **Project creation** — create SonarQube projects via MCP
+- **Run scanner from agent** — `sonar_run_analysis` without leaving the chat
+- **Source coverage highlights** — mark untested lines in source view
+- **Aggregated summary** — single-call project health
+- **Array parameter support** — pass severities/types as arrays or strings
+- **Zero Docker, zero JVM** — Node.js, starts in ~0.1s
 
 ### vs Official mcp/sonarqube
 
