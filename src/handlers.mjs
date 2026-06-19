@@ -41,7 +41,7 @@ const ALL_TOOLS = [
     const [quality, measures, issues, branches] = await Promise.all([
       sonarGet(`/api/qualitygates/project_status?projectKey=${encode(key)}`).catch(() => null),
       sonarGet(`/api/measures/component?component=${encode(key)}&metricKeys=bugs,vulnerabilities,code_smells,coverage,duplicated_lines_density,ncloc,reliability_rating,security_rating,sqale_rating`).catch(() => null),
-      sonarGet(`/api/issues/search?componentKeys=${encode(key)}&ps=1&resolved=false`).catch(() => null),
+      sonarGet(`/api/issues/search?componentKeys=${encode(key)}&ps=500&resolved=false`).catch(() => null),
       sonarGet(`/api/project_branches/list?project=${encode(key)}`).catch(() => null),
     ]);
     const metricMap = {};
