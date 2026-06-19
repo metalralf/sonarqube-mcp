@@ -1,29 +1,51 @@
+// @ts-check
 import http from 'node:http';
 import { z } from 'zod';
 import { getHostUrl, getToken, log } from './api.mjs';
 
-const allowedOrigin = process.env.SONARQUBE_HTTP_ALLOWED_ORIGINS || '';
-
-const cors = () => allowedOrigin ? {
-  'Access-Control-Allow-Origin': allowedOrigin,
+/**
+ * @param {string} origin
+ * @returns {Record<string, string>}
+ */
+const cors = (origin) => ({
+  'Access-Control-Allow-Origin': origin,
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-} : {};
+});
 
+/**
+ * @param {http.ServerResponse} res
+ * @param {number} status
+ * @param {any} data
+ * @param {Record<string, string>} [headers]
+ */
 const sendJson = (res, status, data, headers) => {
   res.writeHead(status, { ...headers, 'Content-Type': 'application/json' });
   res.end(JSON.stringify(data));
 };
 
+/**
+ * @param {http.IncomingMessage} req
+ * @returns {Promise<any>}
+ */
 const parseJson = async (req) => {
   let body = '';
   for await (const chunk of req) body += chunk;
   try { return JSON.parse(body); } catch { return null; }
 };
 
+/**
+ * @param {http.IncomingMessage} req
+ * @param {http.ServerResponse} res
+ * @param {Array<{name: string; description: string}>} tools
+ * @param {Map<string, any>} toolMap
+ * @param {Record<string, import('zod').ZodObject<any>>} schemas
+ * @param {string} host
+ * @param {number} port
+ */
 const handleRequest = async (req, res, tools, toolMap, schemas, host, port) => {
   const url = new URL(req.url || '/', `http://${host}:${port}`);
-  const corsHeaders = cors();
+  const corsHeaders = cors('*');
 
   if (req.method === 'OPTIONS') {
     res.writeHead(204, corsHeaders);
@@ -31,6 +53,7 @@ const handleRequest = async (req, res, tools, toolMap, schemas, host, port) => {
     return;
   }
 
+  /** @param {number} status @param {any} data */
   const send = (status, data) => sendJson(res, status, data, corsHeaders);
 
   if (url.pathname === '/health' && req.method === 'GET') {
@@ -53,6 +76,14 @@ const handleRequest = async (req, res, tools, toolMap, schemas, host, port) => {
   send(404, { error: 'Not found' });
 };
 
+/**
+ * @param {string} toolName
+ * @param {http.IncomingMessage} req
+ * @param {http.ServerResponse} res
+ * @param {(status: number, data: any) => void} send
+ * @param {Map<string, any>} toolMap
+ * @param {Record<string, import('zod').ZodObject<any>>} schemas
+ */
 const handleToolExecution = async (toolName, req, res, send, toolMap, schemas) => {
   const tool = toolMap.get(toolName);
   if (!tool) { send(404, { error: `Unknown tool: ${toolName}` }); return; }
@@ -67,11 +98,17 @@ const handleToolExecution = async (toolName, req, res, send, toolMap, schemas) =
   }
 };
 
+/**
+ * @param {Array<{name: string; description: string; schema: Record<string, import('zod').ZodTypeAny>; handler: Function}>} tools
+ * @returns {Promise<http.Server>}
+ */
 export const startHttpServer = async (tools) => {
   const host = process.env.SONARQUBE_HTTP_HOST || '127.0.0.1';
   const port = Number.parseInt(process.env.SONARQUBE_HTTP_PORT || '8080', 10);
 
+  /** @type {Map<string, any>} */
   const toolMap = new Map(tools.map((t) => [t.name, t]));
+  /** @type {Record<string, import('zod').ZodObject<any>>} */
   const schemas = {};
   for (const t of tools) schemas[t.name] = z.object(t.schema).strict();
 

@@ -1,10 +1,15 @@
 // @ts-check
 const env = (/** @type {string} */ name, /** @type {string} */ fallback = '') => /** @type {string} */ (process.env[name] ?? fallback);
 
+/** @returns {string} */
 export const getHostUrl = () => env('SONARQUBE_URL', 'http://localhost:9000').replace(/\/$/, '');
+/** @returns {string} */
 export const getToken = () => env('SONARQUBE_TOKEN');
 
-const log = (/** @type {string} */ m) => process.stderr.write(`[sonarqube-mcp] ${m}\n`);
+/** @param {string} m */
+const log = (m) => process.stderr.write(`[sonarqube-mcp] ${m}\n`);
+
+/** @returns {string} */
 const authHeader = () => {
   const scheme = env('SONARQUBE_AUTH_SCHEME');
   const token = getToken();
@@ -13,6 +18,7 @@ const authHeader = () => {
     : `Basic ${Buffer.from(token + ':').toString('base64')}`;
 };
 
+/** @returns {string} */
 const instanceHint = () => {
   const url = getHostUrl();
   try {
@@ -26,18 +32,33 @@ const instanceHint = () => {
   }
 };
 
+/**
+ * @typedef {Object} ServerHealth
+ * @property {boolean} reachable
+ * @property {number} [status]
+ * @property {string} [health]
+ * @property {string} [error]
+ * @property {string} [hint]
+ */
+
+/** @returns {Promise<ServerHealth>} */
 export const sonarCheckServer = async () => {
   try {
     const res = await fetch(`${getHostUrl()}/api/system/health`, { headers: { authorization: authHeader() }, signal: AbortSignal.timeout(5000) });
     if (!res.ok) return { reachable: true, status: res.status };
     const body = await res.json();
-    return { reachable: true, health: /** @type {any} */ (body).health };
+    return { reachable: true, health: (/** @type {any} */ (body)).health };
   } catch (/** @type {unknown} */ e) {
     return { reachable: false, error: (/** @type {Error} */ (e)).message, hint: instanceHint() };
   }
 };
 
-export const sonarPost = async (/** @type {string} */ path, /** @type {string} */ body) => {
+/**
+ * @param {string} path
+ * @param {string} body
+ * @returns {Promise<any>}
+ */
+export const sonarPost = async (path, body) => {
   if (!getToken()) throw new Error('SONARQUBE_TOKEN is not set');
   const res = await fetch(`${getHostUrl()}${path}`, {
     method: 'POST',
@@ -54,7 +75,11 @@ export const sonarPost = async (/** @type {string} */ path, /** @type {string} *
   return /** @type {any} */ (parsed);
 };
 
-export const sonarGet = async (/** @type {string} */ path) => {
+/**
+ * @param {string} path
+ * @returns {Promise<any>}
+ */
+export const sonarGet = async (path) => {
   if (!getToken()) throw new Error('SONARQUBE_TOKEN is not set');
   let res;
   try {
@@ -75,6 +100,7 @@ export const sonarGet = async (/** @type {string} */ path) => {
   return /** @type {any} */ (body);
 };
 
+/** @returns {string} */
 export const orgQuery = () => {
   const org = env('SONARQUBE_ORGANIZATION');
   return org ? `&organization=${encodeURIComponent(org)}` : '';
