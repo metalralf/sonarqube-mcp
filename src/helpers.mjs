@@ -1,7 +1,8 @@
 // @ts-check
 import { z } from 'zod';
-import { sonarGet, sonarPost, sonarCheckServer, orgQuery, resolveProjectKey, maybeTruncated, getHostUrl } from './api.mjs';
-export { sonarGet, sonarPost, sonarCheckServer, orgQuery, resolveProjectKey, maybeTruncated, getHostUrl };
+import { sonarGet, resolveProjectKey } from './api.mjs';
+export { sonarGet, resolveProjectKey };
+export { sonarPost, sonarCheckServer, orgQuery, maybeTruncated, getHostUrl } from './api.mjs';
 
 /**
  * @param {string} v
