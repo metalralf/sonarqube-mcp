@@ -387,6 +387,11 @@ describe('handler success paths', () => {
     await assert.rejects(() => h('sonar_raw')({ path: '/api/nonexistent' }), /Tip:/);
   });
 
+  it('sonar_raw omits hint on non-4xx error', async () => {
+    const calls = mockFetch([() => ({ ok: false, status: 500, text: async () => '{"errors":[{"msg":"Internal"}]}' })]);
+    await assert.rejects(() => h('sonar_raw')({ path: '/api/foo' }), /SonarQube 500/);
+  });
+
   it('sonar_analysis_status returns ANALYZED', async () => {
     const calls = mockFetch([
       () => jsonOk({ health: 'GREEN' }),
