@@ -2,5 +2,6 @@
   "reporter": ["text", "lcov"],
   "all": true,
   "include": ["src/**", "test/**"],
-  "exclude": ["coverage-all/**"]
+  "exclude": ["coverage-all/**"],
+  "skip-full": true
 }

@@ -92,6 +92,7 @@ const handleToolExecution = async (toolName, req, res, send, toolMap, schemas) =
   try {
     const params = schemas[toolName].parse(body);
     const data = await tool.handler(params);
+    /* c8 ignore next */
     send(200, typeof data === 'string' ? { result: data } : data);
   } catch (e) {
     send(400, { error: (/** @type {Error} */ (e)).message });

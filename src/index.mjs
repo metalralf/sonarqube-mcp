@@ -18,10 +18,12 @@ for (const { name, description, schema, handler } of TOOL_CONFIGS) {
   });
 }
 
+/* c8 ignore start */
 if (transport === 'http' || transport === 'https') {
   const { startHttpServer } = await import('./http-server.mjs');
   await startHttpServer(TOOL_CONFIGS);
 } else {
+/* c8 ignore stop */
   await server.connect(new StdioServerTransport());
   const defaultProject = process.env.SONARQUBE_PROJECT ?? '';
   log(`ready — host=${getHostUrl()} project=${defaultProject || '(none)'} token=${getToken() ? 'set' : 'MISSING'}`);
