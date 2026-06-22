@@ -61,7 +61,9 @@ export const componentParams = (key, from, to) => {
  * @returns {{ bySeverity: Record<string, number>, byType: Record<string, number> }}
  */
 export const parseIssueFacets = (issueData) => {
+  /** @type {Record<string, number>} */
   const bySeverity = {};
+  /** @type {Record<string, number>} */
   const byType = {};
   for (const f of issueData?.facets || []) {
     if (f.property !== 'severities' && f.property !== 'types') continue;
