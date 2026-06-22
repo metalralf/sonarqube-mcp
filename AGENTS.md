@@ -30,9 +30,10 @@ test/
 ## Commands
 
 ```bash
-npm test             # run all unit + integration tests
-npm run coverage     # run with c8 coverage
-npm run typecheck    # tsc --noEmit JSDoc type check
+npm test                  # run all unit + integration tests
+npm run coverage          # run with c8 coverage
+npm run coverage:check    # enforce thresholds: 100% lines, 95% branches on src/
+npm run typecheck         # tsc --noEmit JSDoc type check
 ```
 
 ## Conventions
@@ -52,6 +53,40 @@ tool('sonar_tool_name', 'Short description.', {
 - Tool names are `snake_case` with `sonar_` prefix
 - Schemas use Zod `.describe()` for LLM-facing documentation
 - Handlers return plain objects/arrays — the MCP wrapper stringifies
+
+### Testing — success paths with fetch mock
+
+Every handler calls `sonarGet`/`sonarPost` which call `fetch()`. Mock `globalThis.fetch` to test the handler logic without infrastructure:
+
+```js
+const mockFetch = (responses) => {
+  let idx = 0;
+  const orig = globalThis.fetch;
+  globalThis.fetch = async (url, opts) => responses[idx++](url, opts);
+  return () => { globalThis.fetch = orig; };
+};
+
+const jsonOk = (data) => ({
+  ok: true, status: 200,
+  text: async () => JSON.stringify(data),
+  json: async () => data,
+});
+```
+
+Usage pattern — write alongside every new handler:
+
+```js
+it('sonar_foo returns correct result', async () => {
+  const restore = mockFetch([() => jsonOk({ key: 'value' })]);
+  const res = await h('sonar_foo')({ projectKey: 'test' });
+  assert.equal(res.key, 'value');
+  restore();
+});
+```
+
+- **Must** test every new tool handler (not just error paths)
+- **Must** add before/after for env vars (SONARQUBE_URL, SONARQUBE_TOKEN, SONARQUBE_PROJECT)
+- **Must** restore `globalThis.fetch` after each test
 
 ### Shared schemas
 
@@ -94,9 +129,10 @@ sonarCheckServer()     — health check with contextual hints
 
 1. Run `npm run typecheck` before committing
 2. Run `npm test` to verify nothing breaks
-3. Run `sonar-scanner -Dsonar.token=...` for dogfood analysis
-4. Check quality gate via `sonar_quality_gate` tool
-5. Bump version in `package.json` + `src/index.mjs` + update `#version` in `README.md`
+3. Run `npm run coverage:check` to enforce src/ thresholds (100% lines, 95% branches)
+4. Run `sonar-scanner -Dsonar.token=...` for dogfood analysis
+5. Check quality gate via `sonar_quality_gate` tool
+6. Bump version in `package.json` + `src/index.mjs` + update `#version` in `README.md`
 
 ## Rules (no exceptions)
 
@@ -104,5 +140,7 @@ sonarCheckServer()     — health check with contextual hints
 - NEVER tag releases — the maintainer does this manually
 - NEVER use anonymous async functions in tool handlers (rejected by SonarQube S3776)
 - NEVER use `t` as a function name (conflicts with i18n conventions)
+- NEVER leave a handler without a success-path test — write the fetch mock alongside the handler in the same pass
 - ALWAYS add JSDoc `@param` / `@returns` for all exported functions
 - ALWAYS add integration tests for new tools (at least one success + one error path)
+- ALWAYS add mock-based unit tests for new tool handlers (every handler branches)
