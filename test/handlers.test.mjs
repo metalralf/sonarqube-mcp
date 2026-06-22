@@ -135,4 +135,35 @@ describe('handlers', () => {
     assert.ok(res.output);
     assert.ok(existsSync(join(tmp, 'node_modules', 'sonar-scanner', 'package.json')));
   });
+
+  it('sonar_run_analysis uses defaults for host/projectKey/sources', async () => {
+    const prevUrl = process.env.SONARQUBE_URL;
+    const prevProj = process.env.SONARQUBE_PROJECT;
+    process.env.SONARQUBE_URL = 'http://default:9000';
+    process.env.SONARQUBE_PROJECT = 'default_proj';
+    const h = TOOL_CONFIGS.find((t) => t.name === 'sonar_run_analysis').handler;
+    const tmp = mkdtempSync(join(tmpdir(), 'sonar-test-'));
+    await assert.rejects(
+      () => h({ cwd: tmp }),
+      /Command failed|ERROR|Unable/,
+    );
+    const propsPath = join(tmp, 'sonar-project.properties');
+    assert.ok(existsSync(propsPath), 'properties should be auto-created');
+    const content = readFileSync(propsPath, 'utf8');
+    assert.match(content, /sonar\.projectKey=default_proj/);
+    assert.match(content, /sonar\.host\.url=http:\/\/default:9000/);
+    assert.match(content, /sonar\.sources=src/);
+    process.env.SONARQUBE_URL = prevUrl;
+    process.env.SONARQUBE_PROJECT = prevProj;
+  });
+
+  it('sonar_run_analysis uses global scanner when not in node_modules', async () => {
+    const h = TOOL_CONFIGS.find((t) => t.name === 'sonar_run_analysis').handler;
+    const tmp = mkdtempSync(join(tmpdir(), 'sonar-test-'));
+    writeFileSync(join(tmp, 'sonar-project.properties'), 'sonar.host.url=http://test:9000\nsonar.projectKey=test\nsonar.sources=.\n');
+    await assert.rejects(
+      () => h({ cwd: tmp }),
+      /Command failed|ERROR|Unable/,
+    );
+  });
 });

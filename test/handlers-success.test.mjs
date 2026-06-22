@@ -113,6 +113,12 @@ describe('handler success paths', () => {
     assert.ok(res.measures);
   });
 
+  it('sonar_metrics_history uses default 30 days', async () => {
+    const calls = mockFetch([() => jsonOk({ measures: [] })]);
+    const res = await h('sonar_metrics_history')({ metric: 'coverage' });
+    assert.ok(res.measures);
+  });
+
   it('sonar_worst_metrics returns grouped results', async () => {
     const calls = mockFetch([() => jsonOk({
       measures: [
@@ -131,6 +137,18 @@ describe('handler success paths', () => {
     const calls = mockFetch([() => jsonOk({ measures: [] })]);
     const res = await h('sonar_worst_metrics')({ projectKey: 'testproj' });
     assert.ok(res._note);
+  });
+
+  it('sonar_worst_metrics skips project root measure', async () => {
+    const calls = mockFetch([() => jsonOk({
+      measures: [
+        { metric: 'coverage', component: 'testproj', value: '100.0' },
+        { metric: 'coverage', component: 'testproj:src/file.js', value: '75.0' },
+      ],
+    })]);
+    const res = await h('sonar_worst_metrics')({ projectKey: 'testproj', metrics: 'coverage', limit: 5 });
+    assert.equal(res.results.coverage.length, 1);
+    assert.equal(res.results.coverage[0].value, 75);
   });
 
   it('sonar_search_projects returns projects', async () => {
@@ -184,6 +202,14 @@ describe('handler success paths', () => {
     assert.equal(res.total, 0);
   });
 
+  it('sonar_issues with severities as string', async () => {
+    const calls = mockFetch([() => jsonOk({
+      total: 0, issues: [], paging: { total: 0, pageSize: 30 }, components: [], facets: [],
+    })]);
+    const res = await h('sonar_issues')({ projectKey: 'testproj', severities: 'MAJOR,CRITICAL', types: 'BUG' });
+    assert.equal(res.total, 0);
+  });
+
   it('sonar_issues with statuses overrides resolved', async () => {
     const calls = mockFetch([() => jsonOk({
       total: 0, issues: [], paging: { total: 0, pageSize: 30 }, components: [], facets: [],
@@ -205,6 +231,18 @@ describe('handler success paths', () => {
     assert.equal(res.by_severity.INFO, 1);
     assert.equal(res.by_type.CODE_SMELL, 2);
     assert.equal(res.effortTotal, 15);
+  });
+
+  it('sonar_issues_summary handles missing effort and missing issues', async () => {
+    const calls = mockFetch([() => jsonOk({
+      total: 2, issues: [
+        { severity: 'MAJOR', type: 'CODE_SMELL' },
+        { severity: 'INFO', type: 'CODE_SMELL' },
+      ],
+    })]);
+    const res = await h('sonar_issues_summary')({ projectKey: 'testproj' });
+    assert.equal(res.total, 2);
+    assert.equal(res.effortTotal, 0);
   });
 
   it('sonar_new_issues returns new issues', async () => {
@@ -232,6 +270,24 @@ describe('handler success paths', () => {
     assert.equal(res.total, 0);
   });
 
+  it('sonar_new_issues with string severities/types and limit=0', async () => {
+    const calls = mockFetch([
+      () => jsonOk({ analyses: [{ date: '2024-06-01' }, { date: '2024-05-01' }] }),
+      () => jsonOk({ total: 0, issues: [], paging: { total: 0, pageSize: 500 } }),
+    ]);
+    const res = await h('sonar_new_issues')({ projectKey: 'testproj', severities: 'MAJOR', types: 'BUG', limit: 0 });
+    assert.equal(res.total, 0);
+  });
+
+  it('sonar_new_issues handles analyses without date', async () => {
+    const calls = mockFetch([
+      () => jsonOk({ analyses: [{ date: '2024-06-01' }, {}] }),
+      () => jsonOk({ total: 0, issues: [], paging: { total: 0, pageSize: 500 } }),
+    ]);
+    const res = await h('sonar_new_issues')({ projectKey: 'testproj' });
+    assert.equal(res.total, 0);
+  });
+
   it('sonar_set_issue_status posts transition', async () => {
     const calls = mockFetch([() => jsonOk({})]);
     const res = await h('sonar_set_issue_status')({ issueKey: 'AVV1', transition: 'confirm' });
@@ -248,6 +304,18 @@ describe('handler success paths', () => {
     const calls = mockFetch([() => jsonOk({ hotspots: [{ key: 'hot1' }], paging: { total: 1, pageSize: 500 } })]);
     const res = await h('sonar_hotspots')({ projectKey: 'testproj', status: 'TO_REVIEW', limit: 10 });
     assert.ok(res.hotspots);
+  });
+
+  it('sonar_hotspots uses defaults for status and limit', async () => {
+    const calls = mockFetch([() => jsonOk({ hotspots: [], paging: { total: 0, pageSize: 500 } })]);
+    const res = await h('sonar_hotspots')({ projectKey: 'testproj' });
+    assert.ok(Array.isArray(res.hotspots));
+  });
+
+  it('sonar_hotspots uses default limit=0', async () => {
+    const calls = mockFetch([() => jsonOk({ hotspots: [], paging: { total: 0, pageSize: 500 } })]);
+    const res = await h('sonar_hotspots')({ projectKey: 'testproj', limit: 0 });
+    assert.ok(Array.isArray(res.hotspots));
   });
 
   it('sonar_hotspot_details shows hotspot', async () => {
@@ -318,6 +386,13 @@ describe('handler success paths', () => {
     assert.equal(res[0].key, 'js');
   });
 
+  it('sonar_list_languages handles missing languages key', async () => {
+    const calls = mockFetch([() => jsonOk({})]);
+    const res = await h('sonar_list_languages')({});
+    assert.ok(Array.isArray(res));
+    assert.equal(res.length, 0);
+  });
+
   it('sonar_list_pull_requests returns empty array when no data', async () => {
     const calls = mockFetch([() => jsonOk({})]);
     const res = await h('sonar_list_pull_requests')({ projectKey: 'testproj' });
@@ -345,6 +420,13 @@ describe('handler success paths', () => {
     })]);
     const res = await h('sonar_list_branches')({ projectKey: 'testproj' });
     assert.equal(res[0].name, 'main');
+  });
+
+  it('sonar_list_branches handles missing branches key', async () => {
+    const calls = mockFetch([() => jsonOk({})]);
+    const res = await h('sonar_list_branches')({ projectKey: 'testproj' });
+    assert.ok(Array.isArray(res));
+    assert.equal(res.length, 0);
   });
 
   it('sonar_coverage_files calls measureSearch', async () => {
