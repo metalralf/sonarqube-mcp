@@ -54,4 +54,24 @@ describe('toolset filtering', () => {
     assert.ok(!names.includes('sonar_change_hotspot_status'), 'write tools excluded');
     assert.ok(!names.includes('sonar_quality_gate'), 'quality excluded');
   });
+
+  it('invalid toolset category is ignored', async () => {
+    const configs = await freshConfigs({ SONARQUBE_TOOLSETS: 'nonexistent_category' });
+    const names = configs.map((t) => t.name);
+    // No valid category matched → all tools returned
+    assert.equal(configs.length, 34);
+    assert.ok(names.includes('sonar_issues'));
+  });
+
+  it('toolset with no match falls through to all tools', async () => {
+    const configs = await freshConfigs({ SONARQUBE_TOOLSETS: 'nonexistent' });
+    assert.equal(configs.length, 34);
+  });
+
+  it('read-only mode without envToolsets set', async () => {
+    const configs = await freshConfigs({ SONARQUBE_READ_ONLY: 'true', SONARQUBE_TOOLSETS: '' });
+    const names = configs.map((t) => t.name);
+    assert.ok(!names.includes('sonar_set_issue_status'));
+    assert.ok(names.includes('sonar_issues'));
+  });
 });

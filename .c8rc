@@ -1,4 +1,6 @@
 {
   "reporter": ["text", "lcov"],
-  "all": true
+  "all": true,
+  "include": ["src/**", "test/**"],
+  "exclude": ["coverage-all/**"]
 }
