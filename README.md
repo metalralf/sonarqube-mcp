@@ -117,22 +117,42 @@ An MCP server that exposes SonarQube data as AI agent tools. **34 tools** — th
 
 ## Configuration
 
-| Env var | Description |
-|---|---|
-| `SONARQUBE_URL` | SonarQube instance base URL |
-| `SONARQUBE_TOKEN` | Auth token |
-| `SONARQUBE_PROJECT` | Default project key |
-| `SONARQUBE_ORGANIZATION` | SonarCloud org key |
-| `SONARQUBE_AUTH_SCHEME` | `basic` (default) or `bearer` |
-| `SONARQUBE_TOOLSETS` | Comma-separated tool categories (e.g. `issues,quality`) |
-| `SONARQUBE_READ_ONLY` | `true` disables write tools |
-| `SONARQUBE_TRANSPORT` | `stdio` (default) or `http` |
-| `SONARQUBE_HTTP_HOST` | HTTP bind host (default `127.0.0.1`) |
-| `SONARQUBE_HTTP_PORT` | HTTP port (default `8080`) |
-| `SONARQUBE_HTTP_ALLOWED_ORIGINS` | CORS origin (default none) |
-| `SONARQUBE_DISABLE_DOCKER` | `true` forces local scanner instead of Docker |
-| `SONARQUBE_DOCKER_IMAGE` | Scanner Docker image (default `sonarsource/sonar-scanner-cli`) |
-| `SONARQUBE_DOCKER_FLAGS` | Extra Docker flags (default `--network=host`, set `""` for none) |
+### Environment variables
+
+All configuration is via env vars. None are required at module scope — they're read lazily at call time.
+
+#### Connection
+
+| Env var | Default | Description |
+|---|---|---|
+| `SONARQUBE_URL` | `http://localhost:9000` | SonarQube server base URL |
+| `SONARQUBE_TOKEN` | — | Auth token. Hotspots need `squ_` prefix |
+| `SONARQUBE_PROJECT` | — | Default project key for tools that accept `projectKey` |
+| `SONARQUBE_ORGANIZATION` | — | SonarCloud organization key |
+| `SONARQUBE_AUTH_SCHEME` | `basic` | `basic` (Base64 password) or `bearer` (raw token) |
+
+#### Transport
+
+| Env var | Default | Description |
+|---|---|---|
+| `SONARQUBE_TRANSPORT` | `stdio` | `stdio` (MCP stdio) or `http` (REST API) |
+| `SONARQUBE_HTTP_HOST` | `127.0.0.1` | HTTP bind address (transport=http only) |
+| `SONARQUBE_HTTP_PORT` | `8080` | HTTP port (transport=http only) |
+
+#### Scanner
+
+| Env var | Default | Description |
+|---|---|---|
+| `SONARQUBE_DISABLE_DOCKER` | `false` | `true` forces local npm/node scanner |
+| `SONARQUBE_DOCKER_IMAGE` | `sonarsource/sonar-scanner-cli` | Scanner Docker image (air-gapped registries) |
+| `SONARQUBE_DOCKER_FLAGS` | `--network=host` | Extra Docker run flags. Set `""` for none |
+
+#### Toolset
+
+| Env var | Default | Description |
+|---|---|---|
+| `SONARQUBE_TOOLSETS` | all | Comma-separated categories: `projects,issues,hotspots,quality,coverage,duplications,history,worst,scm,branches,admin,rules,raw` |
+| `SONARQUBE_READ_ONLY` | `false` | `true` disables `sonar_set_issue_status`, `sonar_change_hotspot_status`, `sonar_run_analysis`, `sonar_setup_scanner` |
 
 ### Toolset filtering
 
