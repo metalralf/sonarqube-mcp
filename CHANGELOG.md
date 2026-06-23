@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.4.0 (2026-06-23)
+
+- **Minor bump**: cross-stack language auto-detection, Docker scanner, env var configurability
+- Language auto-detection for 7 languages (Python, JS, TS, Java, Kotlin, Go, C#)
+- Docker-based scanner (`sonarsource/sonar-scanner-cli`) — zero Java/npm dependency
+- Language-specific `sonar-project.properties` defaults
+- All configuration via env vars (18 vars): `SONARQUBE_URL`, `SONARQUBE_TOKEN`, `SONARQUBE_PROJECT`, `SONARQUBE_ORGANIZATION`, `SONARQUBE_AUTH_SCHEME`, `SONARQUBE_TOOLSETS`, `SONARQUBE_READ_ONLY`, `SONARQUBE_TRANSPORT`, `SONARQUBE_HTTP_HOST`, `SONARQUBE_HTTP_PORT`, `SONARQUBE_HTTP_ALLOWED_ORIGINS`, `SONARQUBE_DISABLE_DOCKER`, `SONARQUBE_DOCKER_IMAGE`, `SONARQUBE_DOCKER_FLAGS`, `SONARQUBE_DOCKER_MOUNT_PATH`, `SONARQUBE_SCANNER_TIMEOUT`, `SONARQUBE_API_TIMEOUT`, `SONARQUBE_SOURCE_CONTEXT`
+- CORS origin configurable via `SONARQUBE_HTTP_ALLOWED_ORIGINS`
+- README: basic + full config examples for both MCP standard (`mcpServers`) and opencode (`mcp`) formats
+- `.mcp.json.example` now uses standard MCP format
+- Scanner timeout, API timeout, source context lines, Docker mount path all configurable
+- Tool descriptions document full fallback chain (Docker → npm → PATH)
+- Docker-enabled test for sonar_run_analysis
+- Port 8080 fallback test for HTTP server
+- Coverage: 99.59% lines (c8), 97.7% overall (SQ), 181 tests
+- Quality gate OK, 0 issues, CayC compliant
+
 ## 1.3.6 (2026-06-23)
 
 - Cross-stack: language auto-detection for 7 languages (Python, JS, TS, Java, Kotlin, Go, C#)
