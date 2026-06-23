@@ -130,6 +130,9 @@ An MCP server that exposes SonarQube data as AI agent tools. **34 tools** — th
 | `SONARQUBE_HTTP_HOST` | HTTP bind host (default `127.0.0.1`) |
 | `SONARQUBE_HTTP_PORT` | HTTP port (default `8080`) |
 | `SONARQUBE_HTTP_ALLOWED_ORIGINS` | CORS origin (default none) |
+| `SONARQUBE_DISABLE_DOCKER` | `true` forces local scanner instead of Docker |
+| `SONARQUBE_DOCKER_IMAGE` | Scanner Docker image (default `sonarsource/sonar-scanner-cli`) |
+| `SONARQUBE_DOCKER_FLAGS` | Extra Docker flags (default `--network=host`, set `""` for none) |
 
 ### Toolset filtering
 
