@@ -290,4 +290,69 @@ describe('helpers — buildSonarProps', () => {
     assert.match(props, /sonar\.javascript\.lcov\.reportPaths/);
     assert.match(props, /sonar\.exclusions=node_modules/);
   });
+
+  it('generates Java-specific properties', async () => {
+    const { buildSonarProps } = await import('../src/helpers.mjs');
+    const props = buildSonarProps('p', 'http://sq:9000', '', 'java');
+    assert.match(props, /sonar\.sources=src\/main/);
+    assert.match(props, /sonar\.java\.binaries=build\/classes\/java\/main/);
+    assert.match(props, /sonar\.coverage\.jacoco\.xmlReportPaths/);
+  });
+
+  it('uses cfg.sources fallback when sources arg is empty', async () => {
+    const { buildSonarProps } = await import('../src/helpers.mjs');
+    const props = buildSonarProps('p', 'http://sq:9000', '', 'java');
+    assert.match(props, /sonar\.sources=src\/main/);
+  });
+});
+
+describe('helpers — scanner utilities', () => {
+  it('mapScannerError maps indexed twice error', async () => {
+    const { mapScannerError } = await import('../src/helpers.mjs');
+    const msg = mapScannerError("can't be indexed twice");
+    assert.match(msg, /overlap/);
+  });
+
+  it('mapScannerError maps missing binaries error', async () => {
+    const { mapScannerError } = await import('../src/helpers.mjs');
+    const msg = mapScannerError("No files nor directories matching 'build/libs/**/*.jar'");
+    assert.match(msg, /Build the project/);
+  });
+
+  it('mapScannerError returns undefined for unknown errors', async () => {
+    const { mapScannerError } = await import('../src/helpers.mjs');
+    assert.equal(mapScannerError('Some random scanner output'), undefined);
+  });
+
+  it('buildScannerHints returns hint for missing coverage', async () => {
+    const { buildScannerHints } = await import('../src/helpers.mjs');
+    const hints = buildScannerHints('No coverage report', null);
+    assert.equal(hints.length, 1);
+    assert.match(hints[0], /coverage/);
+  });
+
+  it('buildScannerHints returns java blame hint', async () => {
+    const { buildScannerHints } = await import('../src/helpers.mjs');
+    const hints = buildScannerHints('Missing blame information for the following', 'java');
+    assert.equal(hints.length, 1);
+    assert.match(hints[0], /blame/);
+  });
+
+  it('buildScannerHints returns empty array when no issues', async () => {
+    const { buildScannerHints } = await import('../src/helpers.mjs');
+    const hints = buildScannerHints('All good! analysis successful', null);
+    assert.equal(hints.length, 0);
+  });
+
+  it('extractCeTaskUrl extracts URL from output', async () => {
+    const { extractCeTaskUrl } = await import('../src/helpers.mjs');
+    const output = 'More about the report processing at /api/ce/task?id=abc123-def456\nANALYSIS SUCCESSFUL';
+    const url = extractCeTaskUrl(output, 'http://sq:9000');
+    assert.equal(url, 'http://sq:9000/api/ce/task?id=abc123-def456');
+  });
+
+  it('extractCeTaskUrl returns undefined when no match', async () => {
+    const { extractCeTaskUrl } = await import('../src/helpers.mjs');
+    assert.equal(extractCeTaskUrl('ANALYSIS SUCCESSFUL', 'http://sq:9000'), undefined);
+  });
 });
