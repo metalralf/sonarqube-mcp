@@ -350,7 +350,7 @@ const ALL_TOOLS = [
 
     if (useDocker) {
       scannerType = 'docker';
-      output = execSync(`docker run --rm -v "${dir}:/usr/src" sonarsource/sonar-scanner-cli ${baseArgs.join(' ')}`, { encoding: 'utf8', timeout: 300000 });
+      output = execSync(`docker run --rm --network=host -v "${dir}:/usr/src" sonarsource/sonar-scanner-cli ${baseArgs.join(' ')}`, { encoding: 'utf8', timeout: 300000 });
     } else {
       const scannerBin = existsSync(join(dir, 'node_modules', '.bin', 'sonar-scanner')) ? join(dir, 'node_modules', '.bin', 'sonar-scanner') : 'sonar-scanner';
       scannerType = 'local';
