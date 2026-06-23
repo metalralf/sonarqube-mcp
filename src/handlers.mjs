@@ -344,6 +344,21 @@ const ALL_TOOLS = [
       writeFileSync(propsPath, buildSonarProps(projectKey || process.env.SONARQUBE_PROJECT || 'my_project', hostUrl, src, lang));
     }
 
+    const buildLogs = [];
+    if (langCfg?.binaries && !existsSync(join(dir, langCfg.binaries))) {
+      const hasGradle = existsSync(join(dir, 'build.gradle')) || existsSync(join(dir, 'build.gradle.kts'));
+      const hasMaven = existsSync(join(dir, 'pom.xml'));
+      if (hasGradle) {
+        const gradleCmd = existsSync(join(dir, 'gradlew')) ? './gradlew' : 'gradle';
+        buildLogs.push(`Building with ${gradleCmd}...`);
+        execSync(`${gradleCmd} build -x test`, { cwd: dir, encoding: 'utf8', timeout: 300000 });
+      } else if (hasMaven) {
+        const mvnCmd = existsSync(join(dir, 'mvnw')) ? './mvnw' : 'mvn';
+        buildLogs.push(`Building with ${mvnCmd}...`);
+        execSync(`${mvnCmd} compile -DskipTests`, { cwd: dir, encoding: 'utf8', timeout: 300000 });
+      }
+    }
+
     let output, scannerType;
     const baseArgs = [];
     if (auth) baseArgs.push(`-Dsonar.token=${auth}`);
@@ -381,11 +396,18 @@ const ALL_TOOLS = [
     if (output.includes('No coverage')) hints.push('Coverage report was not found. Run tests with coverage enabled before analysis (e.g. ./gradlew test jacocoTestReport).');
     if (output.includes('Missing blame information') && lang === 'java') hints.push('SCM blame info is missing. Run analysis from the project root directory with git history.');
 
+    const ceMatch = output.match(/api\/ce\/task\?id=([a-f0-9-]+)/);
+    const ceTaskUrl = ceMatch ? `${hostUrl}/api/ce/task?id=${ceMatch[1]}` : undefined;
+
+    const pk = projectKey || process.env.SONARQUBE_PROJECT || 'my_project';
+
     return {
       success: true,
       scanner: scannerType,
       language: lang || 'unknown',
-      dashboardUrl: `${hostUrl}/dashboard?id=${encodeURIComponent(projectKey || process.env.SONARQUBE_PROJECT || 'my_project')}`,
+      dashboardUrl: `${hostUrl}/dashboard?id=${encodeURIComponent(pk)}`,
+      ceTaskUrl,
+      buildPerformed: buildLogs.length > 0,
       hints: hints.length ? hints : undefined,
       output,
     };
