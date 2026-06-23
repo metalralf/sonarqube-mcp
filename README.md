@@ -11,6 +11,26 @@ An MCP server that exposes SonarQube data as AI agent tools. **34 tools** — th
 > Pin to a specific version: `["npx", "-y", "github:metalralf/sonarqube-mcp#1.3.6"]`  
 > Omit `#1.3.6` for the latest (unstable) development version.
 
+### Minimum config (3 required env vars)
+
+**Claude Desktop / VS Code MCP / Cursor / any MCP client:**
+```json
+{
+  "mcpServers": {
+    "sonarqube": {
+      "command": "npx",
+      "args": ["-y", "github:metalralf/sonarqube-mcp#1.3.6"],
+      "env": {
+        "SONARQUBE_URL": "http://localhost:9000",
+        "SONARQUBE_TOKEN": "squ_...",
+        "SONARQUBE_PROJECT": "my_project"
+      }
+    }
+  }
+}
+```
+
+**opencode** (uses `mcp` key instead of `mcpServers`):
 ```json
 {
   "mcp": {
@@ -22,6 +42,39 @@ An MCP server that exposes SonarQube data as AI agent tools. **34 tools** — th
         "SONARQUBE_URL": "http://localhost:9000",
         "SONARQUBE_TOKEN": "squ_...",
         "SONARQUBE_PROJECT": "my_project"
+      }
+    }
+  }
+}
+```
+
+### Full config (all options)
+
+```json
+{
+  "mcpServers": {
+    "sonarqube": {
+      "command": "npx",
+      "args": ["-y", "github:metalralf/sonarqube-mcp"],
+      "env": {
+        "SONARQUBE_URL": "http://localhost:9000",
+        "SONARQUBE_TOKEN": "squ_...",
+        "SONARQUBE_PROJECT": "my_project",
+        "SONARQUBE_TOOLSETS": "issues,quality",
+        "SONARQUBE_READ_ONLY": "false",
+        "SONARQUBE_TRANSPORT": "stdio",
+        "SONARQUBE_AUTH_SCHEME": "basic",
+        "SONARQUBE_ORGANIZATION": "",
+        "SONARQUBE_HTTP_HOST": "127.0.0.1",
+        "SONARQUBE_HTTP_PORT": "8080",
+        "SONARQUBE_HTTP_ALLOWED_ORIGINS": "*",
+        "SONARQUBE_DISABLE_DOCKER": "false",
+        "SONARQUBE_DOCKER_IMAGE": "sonarsource/sonar-scanner-cli",
+        "SONARQUBE_DOCKER_FLAGS": "--network=host",
+        "SONARQUBE_DOCKER_MOUNT_PATH": "/usr/src",
+        "SONARQUBE_SCANNER_TIMEOUT": "300000",
+        "SONARQUBE_API_TIMEOUT": "5000",
+        "SONARQUBE_SOURCE_CONTEXT": "2"
       }
     }
   }

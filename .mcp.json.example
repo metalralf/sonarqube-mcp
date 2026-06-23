@@ -1,10 +1,9 @@
 {
-  "mcp": {
+  "mcpServers": {
     "sonarqube": {
-      "type": "local",
-      "command": ["npx", "-y", "github:metalralf/sonarqube-mcp"],
-      "enabled": true,
-      "environment": {
+      "command": "npx",
+      "args": ["-y", "github:metalralf/sonarqube-mcp"],
+      "env": {
         "SONARQUBE_URL": "http://localhost:9000",
         "SONARQUBE_TOKEN": "squ_...",
         "SONARQUBE_PROJECT": "my_project"
