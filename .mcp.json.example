@@ -7,10 +7,7 @@
       "environment": {
         "SONARQUBE_URL": "http://localhost:9000",
         "SONARQUBE_TOKEN": "squ_...",
-        "SONARQUBE_PROJECT": "my_project",
-        "SONARQUBE_DOCKER_IMAGE": "sonarsource/sonar-scanner-cli",
-        "SONARQUBE_DOCKER_FLAGS": "--network=host",
-        "SONARQUBE_DISABLE_DOCKER": "false"
+        "SONARQUBE_PROJECT": "my_project"
       }
     }
   }
