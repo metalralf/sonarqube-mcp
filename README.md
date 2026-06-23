@@ -8,15 +8,15 @@ An MCP server that exposes SonarQube data as AI agent tools. **34 tools** — th
 
 ## Quick start
 
-> Pin to a specific version: `["npx", "-y", "github:metalralf/sonarqube-mcp#1.3.4"]`  
-> Omit `#1.3.4` for the latest (unstable) development version.
+> Pin to a specific version: `["npx", "-y", "github:metalralf/sonarqube-mcp#1.3.6"]`  
+> Omit `#1.3.6` for the latest (unstable) development version.
 
 ```json
 {
   "mcp": {
     "sonarqube": {
       "type": "local",
-      "command": ["npx", "-y", "github:metalralf/sonarqube-mcp#1.3.4"],
+      "command": ["npx", "-y", "github:metalralf/sonarqube-mcp#1.3.6"],
       "enabled": true,
       "environment": {
         "SONARQUBE_URL": "http://localhost:9000",
@@ -225,7 +225,7 @@ node src/index.mjs
 
 | Branch | Purpose | Version |
 |---|---|---|
-| `main` | Stable releases | Tagged (`1.3.4`) |
+| `main` | Stable releases | Tagged (`1.3.6`) |
 | `develop` | Daily development | `1.x.0-dev` |
 | `feature/*` | New tools/features | — |
 
@@ -233,9 +233,9 @@ node src/index.mjs
 
 | Change | Bump | Example |
 |---|---|---|
-| 1-2 small tools, fixes | `patch` | `1.3.4` → `1.3.4` |
-| 3+ new tools, features | `minor` | `1.3.4` → `1.4.0` |
-| Breaking changes | `major` | `1.3.4` → `2.0.0` |
+| 1-2 small tools, fixes | `patch` | `1.3.6` → `1.3.7` |
+| 3+ new tools, features | `minor` | `1.3.6` → `1.4.0` |
+| Breaking changes | `major` | `1.3.6` → `2.0.0` |
 
 ## Setting up SonarQube locally
 
