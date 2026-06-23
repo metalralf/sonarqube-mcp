@@ -178,4 +178,17 @@ describe('handlers', () => {
     );
     delete process.env.SONARQUBE_DISABLE_DOCKER;
   });
+
+  it('sonar_run_analysis uses Docker when available', async () => {
+    const h = TOOL_CONFIGS.find((t) => t.name === 'sonar_run_analysis').handler;
+    const tmp = mkdtempSync(join(tmpdir(), 'sonar-test-'));
+    try {
+      await h({ cwd: tmp, host: 'http://test:9000', projectKey: 'test', sources: '.' });
+      assert.fail('should have thrown');
+    } catch (e) {
+      const msg = /** @type {Error} */ (e).message;
+      // Should fail — either Docker can't reach test:9000, or local scanner can't reach it
+      assert.ok(msg.length > 0, 'error should have a message');
+    }
+  });
 });

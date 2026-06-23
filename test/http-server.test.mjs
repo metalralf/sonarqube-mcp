@@ -146,4 +146,24 @@ describe('http server — default host/port', () => {
     assert.equal(body.token, 'MISSING');
     srv.close();
   });
+
+  it('falls back to port 8080 when no env var set', async () => {
+    const origHost = process.env.SONARQUBE_HTTP_HOST;
+    const origPort = process.env.SONARQUBE_HTTP_PORT;
+    delete process.env.SONARQUBE_HTTP_HOST;
+    delete process.env.SONARQUBE_HTTP_PORT;
+
+    const { startHttpServer } = await import('../src/http-server.mjs');
+    try {
+      await startHttpServer([]);
+      assert.fail('should have thrown EADDRINUSE');
+    } catch (e) {
+      const msg = /** @type {Error} */ (e).message;
+      assert.match(msg, /listen EADDRINUSE|listen|8080/);
+    }
+    if (origHost) process.env.SONARQUBE_HTTP_HOST = origHost;
+    else delete process.env.SONARQUBE_HTTP_HOST;
+    if (origPort) process.env.SONARQUBE_HTTP_PORT = origPort;
+    else delete process.env.SONARQUBE_HTTP_PORT;
+  });
 });
