@@ -139,6 +139,12 @@ describe('handler success paths', () => {
     assert.ok(res._note);
   });
 
+  it('sonar_worst_metrics handles missing measures key', async () => {
+    const calls = mockFetch([() => jsonOk({})]);
+    const res = await h('sonar_worst_metrics')({ projectKey: 'testproj' });
+    assert.ok(res._note);
+  });
+
   it('sonar_worst_metrics skips project root measure', async () => {
     const calls = mockFetch([() => jsonOk({
       measures: [
@@ -242,6 +248,13 @@ describe('handler success paths', () => {
     })]);
     const res = await h('sonar_issues_summary')({ projectKey: 'testproj' });
     assert.equal(res.total, 2);
+    assert.equal(res.effortTotal, 0);
+  });
+
+  it('sonar_issues_summary handles missing issues key', async () => {
+    const calls = mockFetch([() => jsonOk({ total: 0 })]);
+    const res = await h('sonar_issues_summary')({ projectKey: 'testproj' });
+    assert.equal(res.total, 0);
     assert.equal(res.effortTotal, 0);
   });
 
