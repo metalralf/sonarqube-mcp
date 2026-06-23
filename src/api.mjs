@@ -6,6 +6,9 @@ export const getHostUrl = () => env('SONARQUBE_URL', 'http://localhost:9000').re
 /** @returns {string} */
 export const getToken = () => env('SONARQUBE_TOKEN');
 
+/** @returns {number} */
+const getApiTimeout = () => Number.parseInt(env('SONARQUBE_API_TIMEOUT', '5000'), 10);
+
 /** @param {string} m */
 const log = (m) => process.stderr.write(`[sonarqube-mcp] ${m}\n`);
 
@@ -44,7 +47,7 @@ const instanceHint = () => {
 /** @returns {Promise<ServerHealth>} */
 export const sonarCheckServer = async () => {
   try {
-    const res = await fetch(`${getHostUrl()}/api/system/health`, { headers: { authorization: authHeader() }, signal: AbortSignal.timeout(5000) });
+    const res = await fetch(`${getHostUrl()}/api/system/health`, { headers: { authorization: authHeader() }, signal: AbortSignal.timeout(getApiTimeout()) });
     if (!res.ok) return { reachable: true, status: res.status };
     const body = await res.json();
     return { reachable: true, health: (/** @type {any} */ (body)).health };

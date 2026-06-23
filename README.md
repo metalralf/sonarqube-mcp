@@ -146,7 +146,10 @@ All configuration is via env vars. None are required at module scope — they're
 | `SONARQUBE_DISABLE_DOCKER` | `false` | `true` forces local npm/node scanner |
 | `SONARQUBE_DOCKER_IMAGE` | `sonarsource/sonar-scanner-cli` | Scanner Docker image (air-gapped registries) |
 | `SONARQUBE_DOCKER_FLAGS` | `--network=host` | Extra Docker run flags. Set `""` for none |
-| `SONARQUBE_SCANNER_TIMEOUT` | `300000` | Scanner timeout in ms (5 min default) |
+| `SONARQUBE_SCANNER_TIMEOUT` | `300000` | Scanner timeout in ms |
+| `SONARQUBE_API_TIMEOUT` | `5000` | Health check fetch timeout in ms |
+| `SONARQUBE_SOURCE_CONTEXT` | `2` | Lines of source context around issues |
+| `SONARQUBE_DOCKER_MOUNT_PATH` | `/usr/src` | Container mount target for project dir |
 
 #### Toolset
 

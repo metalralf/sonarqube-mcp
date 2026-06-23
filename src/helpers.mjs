@@ -142,6 +142,24 @@ export const getDockerFlags = () => process.env.SONARQUBE_DOCKER_FLAGS ?? '--net
 export const getScannerTimeout = () => Number.parseInt(process.env.SONARQUBE_SCANNER_TIMEOUT || '300000', 10);
 
 /**
+ * Get API timeout in ms for health check.
+ * @returns {number} — override with SONARQUBE_API_TIMEOUT (default 5000)
+ */
+export const getApiTimeout = () => Number.parseInt(process.env.SONARQUBE_API_TIMEOUT || '5000', 10);
+
+/**
+ * Get Docker mount path inside container.
+ * @returns {string} — override with SONARQUBE_DOCKER_MOUNT_PATH (default /usr/src)
+ */
+export const getDockerMountPath = () => process.env.SONARQUBE_DOCKER_MOUNT_PATH || '/usr/src';
+
+/**
+ * Get source context lines around issues.
+ * @returns {number} — override with SONARQUBE_SOURCE_CONTEXT (default 2)
+ */
+export const getSourceContext = () => Number.parseInt(process.env.SONARQUBE_SOURCE_CONTEXT || '2', 10);
+
+/**
  * @param {string} v
  * @returns {string}
  */
