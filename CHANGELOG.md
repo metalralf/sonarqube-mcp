@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.3.6 (2026-06-22)
+## 1.3.6 (2026-06-23)
 
 - Cross-stack: language auto-detection for 7 languages (Python, JS, TS, Java, Kotlin, Go, C#)
 - Docker-based scanner (`sonarsource/sonar-scanner-cli`) — zero Java/npm dependency
