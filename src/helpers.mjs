@@ -123,6 +123,12 @@ export const hasDocker = () => {
   catch { return false; }
 };
 
+/** @type {string} — override with SONARQUBE_DOCKER_IMAGE */
+export const getDockerImage = () => process.env.SONARQUBE_DOCKER_IMAGE || 'sonarsource/sonar-scanner-cli';
+
+/** @type {string} — override with SONARQUBE_DOCKER_FLAGS (e.g. '--network=bridge' or '') */
+export const getDockerFlags = () => process.env.SONARQUBE_DOCKER_FLAGS ?? '--network=host';
+
 /**
  * @param {string} v
  * @returns {string}
