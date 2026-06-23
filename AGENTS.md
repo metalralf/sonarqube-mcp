@@ -132,7 +132,7 @@ sonarCheckServer()     — health check with contextual hints
 3. Run `npm run coverage:check` to enforce src/ thresholds (100% lines, 95% branches)
 4. Run `sonar-scanner -Dsonar.token=...` for dogfood analysis
 5. Check quality gate via `sonar_quality_gate` tool
-6. Bump version in `package.json` + `src/index.mjs` + update `#version` in `README.md`
+6. Bump version in `package.json` + `src/index.mjs` + `CHANGELOG.md` + update `#version` in `README.md`
 
 ## Rules (no exceptions)
 
