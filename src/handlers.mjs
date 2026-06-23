@@ -306,7 +306,7 @@ const ALL_TOOLS = [
   tool('sonar_list_languages', 'List all supported languages.', {
   }, async () => { const d = await sonarGet('/api/languages/list'); return d.languages || []; }),
 
-  tool('sonar_setup_scanner', 'Install sonar-scanner (detects Docker/pnpm/yarn/npm).', {
+  tool('sonar_setup_scanner', 'Install sonar-scanner (detects Docker first, falls back to pnpm/yarn/npm).', {
     cwd: z.string().optional().describe('Project root'),
   }, async ({ cwd }) => {
     const dir = cwd || process.cwd();
@@ -320,14 +320,14 @@ const ALL_TOOLS = [
     return { installed: true, packageManager: cmd, output: execSync(`${cmd} ${args.join(' ')}`, { cwd: dir, encoding: 'utf8', timeout: getScannerTimeout() }) };
   }),
 
-  tool('sonar_run_analysis', 'Run sonar-scanner analysis (auto-detects language, prefers Docker).', {
+  tool('sonar_run_analysis', 'Run sonar-scanner analysis (auto-detects language, prefers Docker, falls back to local sonar-scanner via npm/PATH).', {
     cwd: z.string().optional().describe('Project root'),
     token: z.string().optional().describe('Token'),
     projectKey: z.string().optional().describe('Override project key'),
     host: z.string().optional().describe('SonarQube URL'),
     sources: z.string().optional().describe('Source dirs'),
     language: z.enum(['python', 'javascript', 'typescript', 'java', 'kotlin', 'go', 'csharp']).optional().describe('Project language — auto-detected if omitted'),
-    scanner: z.enum(['auto', 'docker', 'local']).optional().describe('Scanner method: auto (default, try Docker first), docker, or local'),
+    scanner: z.enum(['auto', 'docker', 'local']).optional().describe('Scanner method: auto (default — Docker first, fallback to npm/PATH sonar-scanner), docker, or local'),
   }, async ({ cwd, token, projectKey, host, sources, language, scanner: scannerMethod }) => {
     const dir = cwd || process.cwd();
     const auth = token || process.env.SONARQUBE_TOKEN || '';
