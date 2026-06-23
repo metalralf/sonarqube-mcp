@@ -85,6 +85,7 @@ describe('handlers', () => {
   });
 
   it('sonar_run_analysis auto-creates properties and tries to run scanner', async () => {
+    process.env.SONARQUBE_DISABLE_DOCKER = 'true';
     const h = TOOL_CONFIGS.find((t) => t.name === 'sonar_run_analysis').handler;
     const tmp = mkdtempSync(join(tmpdir(), 'sonar-test-'));
     await assert.rejects(
@@ -96,6 +97,7 @@ describe('handlers', () => {
     const content = readFileSync(propsPath, 'utf8');
     assert.match(content, /sonar\.projectKey=test/);
     assert.match(content, /sonar\.host\.url=http:\/\/test:9000/);
+    delete process.env.SONARQUBE_DISABLE_DOCKER;
   });
 
   it('sonar_run_analysis throws without token', async () => {
@@ -109,6 +111,7 @@ describe('handlers', () => {
   });
 
   it('sonar_setup_scanner detects pnpm lock file', async () => {
+    process.env.SONARQUBE_DISABLE_DOCKER = 'true';
     const h = TOOL_CONFIGS.find((t) => t.name === 'sonar_setup_scanner').handler;
     const tmp = mkdtempSync(join(tmpdir(), 'sonar-test-'));
     writeFileSync(join(tmp, 'package.json'), '{"name":"test","version":"1.0.0"}');
@@ -116,17 +119,21 @@ describe('handlers', () => {
     const res = await h({ cwd: tmp });
     assert.ok(res.installed);
     assert.equal(res.packageManager, 'pnpm');
+    delete process.env.SONARQUBE_DISABLE_DOCKER;
   });
 
   it('sonar_setup_scanner detects yarn lock file', async () => {
+    process.env.SONARQUBE_DISABLE_DOCKER = 'true';
     const h = TOOL_CONFIGS.find((t) => t.name === 'sonar_setup_scanner').handler;
     const tmp = mkdtempSync(join(tmpdir(), 'sonar-test-'));
     writeFileSync(join(tmp, 'package.json'), '{"name":"test","version":"1.0.0"}');
     writeFileSync(join(tmp, 'yarn.lock'), '# yarn lockfile\n');
     await assert.rejects(() => h({ cwd: tmp }), /Command failed/);
+    delete process.env.SONARQUBE_DISABLE_DOCKER;
   });
 
   it('sonar_setup_scanner runs npm in temp dir with package.json', async () => {
+    process.env.SONARQUBE_DISABLE_DOCKER = 'true';
     const h = TOOL_CONFIGS.find((t) => t.name === 'sonar_setup_scanner').handler;
     const tmp = mkdtempSync(join(tmpdir(), 'sonar-test-'));
     writeFileSync(join(tmp, 'package.json'), '{"name":"test","version":"1.0.0"}');
@@ -134,9 +141,11 @@ describe('handlers', () => {
     assert.ok(res.installed);
     assert.ok(res.output);
     assert.ok(existsSync(join(tmp, 'node_modules', 'sonar-scanner', 'package.json')));
+    delete process.env.SONARQUBE_DISABLE_DOCKER;
   });
 
   it('sonar_run_analysis uses defaults for host/projectKey/sources', async () => {
+    process.env.SONARQUBE_DISABLE_DOCKER = 'true';
     const prevUrl = process.env.SONARQUBE_URL;
     const prevProj = process.env.SONARQUBE_PROJECT;
     process.env.SONARQUBE_URL = 'http://default:9000';
@@ -155,9 +164,11 @@ describe('handlers', () => {
     assert.match(content, /sonar\.sources=src/);
     process.env.SONARQUBE_URL = prevUrl;
     process.env.SONARQUBE_PROJECT = prevProj;
+    delete process.env.SONARQUBE_DISABLE_DOCKER;
   });
 
   it('sonar_run_analysis uses global scanner when not in node_modules', async () => {
+    process.env.SONARQUBE_DISABLE_DOCKER = 'true';
     const h = TOOL_CONFIGS.find((t) => t.name === 'sonar_run_analysis').handler;
     const tmp = mkdtempSync(join(tmpdir(), 'sonar-test-'));
     writeFileSync(join(tmp, 'sonar-project.properties'), 'sonar.host.url=http://test:9000\nsonar.projectKey=test\nsonar.sources=.\n');
@@ -165,5 +176,6 @@ describe('handlers', () => {
       () => h({ cwd: tmp }),
       /Command failed|ERROR|Unable/,
     );
+    delete process.env.SONARQUBE_DISABLE_DOCKER;
   });
 });

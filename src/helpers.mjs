@@ -1,8 +1,118 @@
 // @ts-check
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { join } from 'node:path';
+import { execSync } from 'node:child_process';
 import { z } from 'zod';
 import { sonarGet, resolveProjectKey } from './api.mjs';
 export { sonarGet, resolveProjectKey };
 export { sonarPost, sonarCheckServer, orgQuery, maybeTruncated, getHostUrl } from './api.mjs';
+
+/**
+ * @typedef {'python'|'javascript'|'typescript'|'java'|'kotlin'|'go'|'csharp'} Language
+ */
+
+/**
+ * @type {Record<string, { coverage: string, exclusions: string, tests: string }>}
+ */
+export const LANG_CONFIGS = {
+  python: {
+    coverage: 'coverage.xml',
+    exclusions: 'venv/**,.venv/**,__pycache__/**,*.pyc,*.pyo,.mypy_cache/,.pytest_cache/',
+    tests: 'test',
+  },
+  javascript: {
+    coverage: 'coverage/lcov.info',
+    exclusions: 'node_modules/**,bower_components/**,dist/**,build/**',
+    tests: 'test',
+  },
+  typescript: {
+    coverage: 'coverage/lcov.info',
+    exclusions: 'node_modules/**,bower_components/**,dist/**,build/**,**/*.d.ts',
+    tests: 'test',
+  },
+  java: {
+    coverage: 'target/site/jacoco/jacoco.xml',
+    exclusions: 'build/**,target/**,*.class,*.jar',
+    tests: 'src/test',
+  },
+  kotlin: {
+    coverage: 'build/reports/kover/report.xml',
+    exclusions: 'build/**,target/**',
+    tests: 'src/test',
+  },
+  go: {
+    coverage: 'coverage.out',
+    exclusions: 'vendor/**,*.pb.go',
+    tests: '.',
+  },
+  csharp: {
+    coverage: 'coverage.cobertura.xml',
+    exclusions: 'bin/**,obj/**,**/node_modules/**',
+    tests: 'test',
+  },
+};
+
+/**
+ * Detect project language by sniffing for well-known files.
+ * @param {string} dir — project root directory
+ * @returns {Language|null}
+ */
+export const detectLanguage = (dir) => {
+  if (existsSync(join(dir, 'package.json'))) {
+    try {
+      const pkg = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'));
+      const deps = { ...pkg.dependencies, ...pkg.devDependencies };
+      if (deps?.typescript || deps?.tslib || deps?.['@types/node']) return 'typescript';
+    } catch {}
+    return 'javascript';
+  }
+  if (existsSync(join(dir, 'requirements.txt')) || existsSync(join(dir, 'setup.py')) || existsSync(join(dir, 'pyproject.toml')) || existsSync(join(dir, 'Pipfile'))) return 'python';
+  if (existsSync(join(dir, 'pom.xml')) || existsSync(join(dir, 'build.gradle')) || existsSync(join(dir, 'build.gradle.kts'))) {
+    if (existsSync(join(dir, 'pom.xml'))) {
+      const pom = readFileSync(join(dir, 'pom.xml'), 'utf8');
+      if (pom.includes('kotlin')) return 'kotlin';
+    }
+    return 'java';
+  }
+  if (existsSync(join(dir, 'go.mod'))) return 'go';
+  try {
+    const files = readdirSync(dir);
+    if (files.some((f) => f.endsWith('.csproj'))) return 'csharp';
+  } catch {}
+  return null;
+};
+
+/**
+ * Build sonar-project.properties content with language-aware defaults.
+ * @param {string} projectKey
+ * @param {string} hostUrl
+ * @param {string} sources
+ * @param {Language|null} lang
+ * @returns {string}
+ */
+export const buildSonarProps = (projectKey, hostUrl, sources, lang) => {
+  let props = `sonar.host.url=${hostUrl}\nsonar.projectKey=${projectKey}\nsonar.sources=${sources}\n`;
+  if (lang && LANG_CONFIGS[lang]) {
+    const cfg = LANG_CONFIGS[lang];
+    props += `sonar.exclusions=${cfg.exclusions}\nsonar.tests=${cfg.tests}\n`;
+    if (lang === 'python') props += `sonar.python.coverage.reportPaths=${cfg.coverage}\n`;
+    else if (lang === 'go') props += `sonar.go.coverage.reportPaths=${cfg.coverage}\n`;
+    else if (lang === 'csharp') props += `sonar.cs.coverage.reportPaths=${cfg.coverage}\n`;
+    else props += `sonar.javascript.lcov.reportPaths=${cfg.coverage}\n`;
+  }
+  return props;
+};
+
+/**
+ * Check if Docker is available on the host.
+ * Disable with SONARQUBE_DISABLE_DOCKER=true for deterministic tests.
+ * @returns {boolean}
+ */
+export const hasDocker = () => {
+  if (process.env.SONARQUBE_DISABLE_DOCKER === 'true') return false;
+  try { execSync('docker info', { stdio: 'ignore', timeout: 5000 }); return true; }
+  catch { return false; }
+};
 
 /**
  * @param {string} v

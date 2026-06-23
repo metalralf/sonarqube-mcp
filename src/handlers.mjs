@@ -3,7 +3,7 @@ import { execSync } from 'node:child_process';
 import { existsSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { z } from 'zod';
-import { tool, projectKey, componentKey, maxResults, encode, requireKey, componentParams, measureSearch, parseIssueFacets, getHostUrl, filterTools, sonarGet, sonarPost, sonarCheckServer, orgQuery, resolveProjectKey, maybeTruncated } from './helpers.mjs';
+import { tool, projectKey, componentKey, maxResults, encode, requireKey, componentParams, measureSearch, parseIssueFacets, getHostUrl, filterTools, sonarGet, sonarPost, sonarCheckServer, orgQuery, resolveProjectKey, maybeTruncated, detectLanguage, buildSonarProps, hasDocker, LANG_CONFIGS } from './helpers.mjs';
 
 const ALL_TOOLS = [
   tool('sonar_projects_create', 'Create a new project in SonarQube. Requires admin permissions.', {
@@ -306,10 +306,11 @@ const ALL_TOOLS = [
   tool('sonar_list_languages', 'List all supported languages.', {
   }, async () => { const d = await sonarGet('/api/languages/list'); return d.languages || []; }),
 
-  tool('sonar_setup_scanner', 'Install sonar-scanner (detects pnpm/yarn/npm).', {
+  tool('sonar_setup_scanner', 'Install sonar-scanner (detects Docker/pnpm/yarn/npm).', {
     cwd: z.string().optional().describe('Project root'),
   }, async ({ cwd }) => {
     const dir = cwd || process.cwd();
+    if (hasDocker()) return { installed: true, packageManager: 'docker', output: 'Docker available — scanner will run via sonarsource/sonar-scanner-cli' };
     const hasPnpm = existsSync(join(dir, 'pnpm-lock.yaml'));
     const hasYarn = existsSync(join(dir, 'yarn.lock'));
     let cmd, args;
@@ -319,22 +320,50 @@ const ALL_TOOLS = [
     return { installed: true, packageManager: cmd, output: execSync(`${cmd} ${args.join(' ')}`, { cwd: dir, encoding: 'utf8', timeout: 120000 }) };
   }),
 
-  tool('sonar_run_analysis', 'Run sonar-scanner analysis.', {
+  tool('sonar_run_analysis', 'Run sonar-scanner analysis (auto-detects language, prefers Docker).', {
     cwd: z.string().optional().describe('Project root'),
     token: z.string().optional().describe('Token'),
     projectKey: z.string().optional().describe('Override project key'),
     host: z.string().optional().describe('SonarQube URL'),
     sources: z.string().optional().describe('Source dirs'),
-  }, async ({ cwd, token, projectKey, host, sources }) => {
+    language: z.enum(['python', 'javascript', 'typescript', 'java', 'kotlin', 'go', 'csharp']).optional().describe('Project language — auto-detected if omitted'),
+    scanner: z.enum(['auto', 'docker', 'local']).optional().describe('Scanner method: auto (default, try Docker first), docker, or local'),
+  }, async ({ cwd, token, projectKey, host, sources, language, scanner: scannerMethod }) => {
     const dir = cwd || process.cwd();
-    const propsPath = join(dir, 'sonar-project.properties');
     const auth = token || process.env.SONARQUBE_TOKEN || '';
     if (!auth) throw new Error('No token provided.');
-    if (!existsSync(propsPath)) writeFileSync(propsPath, `sonar.host.url=${host || process.env.SONARQUBE_URL || 'http://localhost:9000'}\nsonar.projectKey=${projectKey || process.env.SONARQUBE_PROJECT || 'my_project'}\nsonar.sources=${sources || 'src'}\n`);
-    const scanner = existsSync(join(dir, 'node_modules', '.bin', 'sonar-scanner')) ? join(dir, 'node_modules', '.bin', 'sonar-scanner') : 'sonar-scanner';
-    const args = [`-Dsonar.token=${auth}`];
-    if (projectKey) args.push(`-Dsonar.projectKey=${projectKey}`);
-    return { success: true, output: execSync(`${scanner} ${args.join(' ')}`, { cwd: dir, encoding: 'utf8', timeout: 300000 }) };
+    const lang = language || detectLanguage(dir);
+    const useDocker = scannerMethod === 'docker' || (scannerMethod !== 'local' && hasDocker());
+    if (scannerMethod === 'docker' && !useDocker) throw new Error('Docker scanner requested but Docker is not available.');
+    const hostUrl = host || process.env.SONARQUBE_URL || 'http://localhost:9000';
+    const src = sources || 'src';
+    const propsPath = join(dir, 'sonar-project.properties');
+
+    if (!existsSync(propsPath)) {
+      writeFileSync(propsPath, buildSonarProps(projectKey || process.env.SONARQUBE_PROJECT || 'my_project', hostUrl, src, lang));
+    }
+
+    let output, scannerType;
+    const baseArgs = [];
+    if (auth) baseArgs.push(`-Dsonar.token=${auth}`);
+    if (projectKey) baseArgs.push(`-Dsonar.projectKey=${projectKey}`);
+
+    if (useDocker) {
+      scannerType = 'docker';
+      output = execSync(`docker run --rm -v "${dir}:/usr/src" sonarsource/sonar-scanner-cli ${baseArgs.join(' ')}`, { encoding: 'utf8', timeout: 300000 });
+    } else {
+      const scannerBin = existsSync(join(dir, 'node_modules', '.bin', 'sonar-scanner')) ? join(dir, 'node_modules', '.bin', 'sonar-scanner') : 'sonar-scanner';
+      scannerType = 'local';
+      output = execSync(`${scannerBin} ${baseArgs.join(' ')}`, { cwd: dir, encoding: 'utf8', timeout: 300000 });
+    }
+
+    return {
+      success: true,
+      scanner: scannerType,
+      language: lang || 'unknown',
+      dashboardUrl: `${hostUrl}/dashboard?id=${encodeURIComponent(projectKey || process.env.SONARQUBE_PROJECT || 'my_project')}`,
+      output,
+    };
   }),
 
   tool('sonar_list_pull_requests', 'List PRs (requires Developer Edition+).', {

@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
-import { describe, it, before, after } from 'node:test';
+import { describe, it, before, after, beforeEach } from 'node:test';
+import { readdirSync, rmSync } from 'node:fs';
+import { join } from 'node:path';
 import { z } from 'zod';
 import { parseIssueFacets, componentParams, requireKey, encode } from '../src/helpers.mjs';
 
@@ -179,5 +181,113 @@ describe('helpers — tool and filterTools', () => {
     assert.equal(result.description, 'Does stuff');
     assert.equal(typeof result.handler, 'function');
     assert.equal(result.handler(), 42);
+  });
+});
+
+describe('helpers — language detection', () => {
+  let tmpDir;
+  /** @type {(name: string, content: string) => void} */
+  let write;
+  /** @type {() => void} */
+  let cleanup;
+
+  before(async () => {
+    const [{ mkdtempSync, writeFileSync }, { join: joinPath }, { tmpdir }] = await Promise.all([import('node:fs'), import('node:path'), import('node:os')]);
+    tmpDir = mkdtempSync(joinPath(tmpdir(), 'lang-test-'));
+    write = (name, content) => writeFileSync(joinPath(tmpDir, name), content);
+  });
+
+  after(() => {
+    if (tmpDir) rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  beforeEach(() => {
+    try {
+      for (const f of readdirSync(tmpDir)) rmSync(join(tmpDir, f), { recursive: true, force: true });
+    } catch {}
+  });
+
+  it('detects javascript from package.json without typescript', async () => {
+    const { detectLanguage } = await import('../src/helpers.mjs');
+    write('package.json', '{"name":"test"}');
+    assert.equal(detectLanguage(tmpDir), 'javascript');
+  });
+
+  it('detects typescript from package.json with typescript dep', async () => {
+    const { detectLanguage } = await import('../src/helpers.mjs');
+    write('package.json', '{"name":"test","devDependencies":{"typescript":"^5.0"}}');
+    assert.equal(detectLanguage(tmpDir), 'typescript');
+  });
+
+  it('detects python from requirements.txt', async () => {
+    const { detectLanguage } = await import('../src/helpers.mjs');
+    write('requirements.txt', 'flask\n');
+    assert.equal(detectLanguage(tmpDir), 'python');
+  });
+
+  it('detects python from pyproject.toml', async () => {
+    const { detectLanguage } = await import('../src/helpers.mjs');
+    write('pyproject.toml', '[build-system]\n');
+    assert.equal(detectLanguage(tmpDir), 'python');
+  });
+
+  it('detects java from pom.xml', async () => {
+    const { detectLanguage } = await import('../src/helpers.mjs');
+    write('pom.xml', '<project><groupId>com.test</groupId></project>');
+    assert.equal(detectLanguage(tmpDir), 'java');
+  });
+
+  it('detects java from build.gradle', async () => {
+    const { detectLanguage } = await import('../src/helpers.mjs');
+    write('build.gradle', 'apply plugin: "java"');
+    assert.equal(detectLanguage(tmpDir), 'java');
+  });
+
+  it('detects kotlin from pom.xml with kotlin ref', async () => {
+    const { detectLanguage } = await import('../src/helpers.mjs');
+    write('pom.xml', '<project><groupId>com.test</groupId><artifactId>kotlin-app</artifactId></project>');
+    assert.equal(detectLanguage(tmpDir), 'kotlin');
+  });
+
+  it('detects go from go.mod', async () => {
+    const { detectLanguage } = await import('../src/helpers.mjs');
+    write('go.mod', 'module github.com/test\n');
+    assert.equal(detectLanguage(tmpDir), 'go');
+  });
+
+  it('detects csharp from .csproj file', async () => {
+    const { detectLanguage } = await import('../src/helpers.mjs');
+    write('test.csproj', '<Project Sdk="Microsoft.NET.Sdk">');
+    assert.equal(detectLanguage(tmpDir), 'csharp');
+  });
+
+  it('returns null for unknown project', async () => {
+    const { detectLanguage } = await import('../src/helpers.mjs');
+    assert.equal(detectLanguage(tmpDir), null);
+  });
+});
+
+describe('helpers — buildSonarProps', () => {
+  it('generates default properties without language', async () => {
+    const { buildSonarProps } = await import('../src/helpers.mjs');
+    const props = buildSonarProps('my_proj', 'http://sq:9000', 'app', null);
+    assert.match(props, /sonar\.host\.url=http:\/\/sq:9000/);
+    assert.match(props, /sonar\.projectKey=my_proj/);
+    assert.match(props, /sonar\.sources=app/);
+    assert.ok(!props.includes('sonar.exclusions'));
+  });
+
+  it('generates Python-specific properties', async () => {
+    const { buildSonarProps, LANG_CONFIGS } = await import('../src/helpers.mjs');
+    const props = buildSonarProps('p', 'http://sq:9000', 'src', 'python');
+    assert.match(props, /sonar\.exclusions=venv/);
+    assert.match(props, /sonar\.python\.coverage\.reportPaths/);
+  });
+
+  it('generates TypeScript-specific properties', async () => {
+    const { buildSonarProps } = await import('../src/helpers.mjs');
+    const props = buildSonarProps('p', 'http://sq:9000', 'src', 'typescript');
+    assert.match(props, /sonar\.javascript\.lcov\.reportPaths/);
+    assert.match(props, /sonar\.exclusions=node_modules/);
   });
 });

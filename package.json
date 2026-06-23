@@ -14,7 +14,7 @@
   "scripts": {
     "test": "node --test",
     "coverage": "c8 node --test",
-    "coverage:check": "c8 --reporter=json --include 'src/**' node --test 2>/dev/null && c8 check-coverage --include 'src/**' --lines 100 --functions 100 --branches 85",
+    "coverage:check": "c8 --reporter=json node --test 2>/dev/null && c8 check-coverage --exclude 'test/**' --exclude 'coverage-all/**' --lines 100 --functions 100 --branches 85",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
