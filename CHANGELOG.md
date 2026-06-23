@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.4.1 (2026-06-23)
+
+- **Java fixes**: sources=src/main, binaries=build/classes/java/main, jacoco XML reports
+- **Kotlin fixes**: sources=src/main, binaries=build/classes/kotlin/main
+- `buildSonarProps` now uses language-specific `coverageProperty` instead of hardcoded `sonar.javascript.lcov.reportPaths`
+- Validate overlapping sources/tests paths before analysis
+- Wrap common scanner errors into actionable messages:
+  - "can't be indexed twice" → suggest splitting sources/tests
+  - "No files nor directories matching" → suggest building first
+- Coverage hint returned when coverage report is missing
+- LANG_CONFIGS extended with `sources`, `binaries`, `coverageProperty` fields
+
 ## 1.4.0 (2026-06-23)
 
 - **Minor bump**: cross-stack language auto-detection, Docker scanner, env var configurability

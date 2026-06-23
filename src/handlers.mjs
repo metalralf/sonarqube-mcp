@@ -3,7 +3,7 @@ import { execSync } from 'node:child_process';
 import { existsSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { z } from 'zod';
-import { tool, projectKey, componentKey, maxResults, encode, requireKey, componentParams, measureSearch, parseIssueFacets, getHostUrl, filterTools, sonarGet, sonarPost, sonarCheckServer, orgQuery, resolveProjectKey, maybeTruncated, detectLanguage, buildSonarProps, hasDocker, resolveDocker, getDockerImage, getDockerFlags, getScannerTimeout, getDockerMountPath, getSourceContext } from './helpers.mjs';
+import { tool, projectKey, componentKey, maxResults, encode, requireKey, componentParams, measureSearch, parseIssueFacets, getHostUrl, filterTools, sonarGet, sonarPost, sonarCheckServer, orgQuery, resolveProjectKey, maybeTruncated, detectLanguage, buildSonarProps, hasDocker, resolveDocker, getDockerImage, getDockerFlags, getScannerTimeout, getDockerMountPath, getSourceContext, LANG_CONFIGS } from './helpers.mjs';
 
 const ALL_TOOLS = [
   tool('sonar_projects_create', 'Create a new project in SonarQube. Requires admin permissions.', {
@@ -336,7 +336,8 @@ const ALL_TOOLS = [
     const useDocker = scannerMethod === 'docker' || (scannerMethod !== 'local' && hasDocker());
     if (scannerMethod === 'docker' && !useDocker) throw new Error('Docker scanner requested but Docker is not available.');
     const hostUrl = host || process.env.SONARQUBE_URL || 'http://localhost:9000';
-    const src = sources || 'src';
+    const langCfg = lang && LANG_CONFIGS[lang];
+    const src = sources || langCfg?.sources || 'src';
     const propsPath = join(dir, 'sonar-project.properties');
 
     if (!existsSync(propsPath)) {
@@ -348,21 +349,44 @@ const ALL_TOOLS = [
     if (auth) baseArgs.push(`-Dsonar.token=${auth}`);
     if (projectKey) baseArgs.push(`-Dsonar.projectKey=${projectKey}`);
 
+    const dedupWarnings = new Set();
+
     if (useDocker) {
       scannerType = 'docker';
       const dockerFlags = getDockerFlags();
-      output = execSync(`${resolveDocker()} run --rm ${dockerFlags ? dockerFlags + ' ' : ''}-v "${dir}:${getDockerMountPath()}" ${getDockerImage()} ${baseArgs.join(' ')}`, { encoding: 'utf8', timeout: getScannerTimeout() });
+      try {
+        output = execSync(`${resolveDocker()} run --rm ${dockerFlags ? dockerFlags + ' ' : ''}-v "${dir}:${getDockerMountPath()}" ${getDockerImage()} ${baseArgs.join(' ')}`, { encoding: 'utf8', timeout: getScannerTimeout() });
+      } catch (e) {
+        const msg = /** @type {Error} */ (e).message;
+        if (msg.includes("can't be indexed twice")) throw new Error('Your sonar.sources and sonar.tests paths overlap. Set sonar.sources=src/main (or the correct source directory) and sonar.tests=src/test.');
+        if (msg.includes('No files nor directories matching') || msg.includes('sonar.java.binaries')) throw new Error('No compiled class files found. Build the project first (e.g. ./gradlew build) or set sonar.java.binaries to the correct path.');
+        if (msg.includes('Missing blame information')) dedupWarnings.add('scm');
+        if (msg.includes('No coverage')) dedupWarnings.add('coverage');
+        throw e;
+      }
     } else {
       const scannerBin = existsSync(join(dir, 'node_modules', '.bin', 'sonar-scanner')) ? join(dir, 'node_modules', '.bin', 'sonar-scanner') : 'sonar-scanner';
       scannerType = 'local';
-      output = execSync(`${scannerBin} ${baseArgs.join(' ')}`, { cwd: dir, encoding: 'utf8', timeout: getScannerTimeout() });
+      try {
+        output = execSync(`${scannerBin} ${baseArgs.join(' ')}`, { cwd: dir, encoding: 'utf8', timeout: getScannerTimeout() });
+      } catch (e) {
+        const msg = /** @type {Error} */ (e).message;
+        if (msg.includes("can't be indexed twice")) throw new Error('Your sonar.sources and sonar.tests paths overlap. Set sonar.sources=src/main (or the correct source directory) and sonar.tests=src/test.');
+        if (msg.includes('No files nor directories matching') || msg.includes('sonar.java.binaries')) throw new Error('No compiled class files found. Build the project first (e.g. ./gradlew build) or set sonar.java.binaries to the correct path.');
+        throw e;
+      }
     }
+
+    const hints = [];
+    if (output.includes('No coverage')) hints.push('Coverage report was not found. Run tests with coverage enabled before analysis (e.g. ./gradlew test jacocoTestReport).');
+    if (output.includes('Missing blame information') && lang === 'java') hints.push('SCM blame info is missing. Run analysis from the project root directory with git history.');
 
     return {
       success: true,
       scanner: scannerType,
       language: lang || 'unknown',
       dashboardUrl: `${hostUrl}/dashboard?id=${encodeURIComponent(projectKey || process.env.SONARQUBE_PROJECT || 'my_project')}`,
+      hints: hints.length ? hints : undefined,
       output,
     };
   }),

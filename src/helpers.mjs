@@ -12,43 +12,59 @@ export { sonarPost, sonarCheckServer, orgQuery, maybeTruncated, getHostUrl } fro
  */
 
 /**
- * @type {Record<string, { coverage: string, exclusions: string, tests: string }>}
+ * @type {Record<string, { sources: string, tests: string, coverage: string, exclusions: string, binaries?: string, coverageProperty?: string }>}
  */
 export const LANG_CONFIGS = {
   python: {
+    sources: 'src',
+    tests: 'test',
     coverage: 'coverage.xml',
     exclusions: 'venv/**,.venv/**,__pycache__/**,*.pyc,*.pyo,.mypy_cache/,.pytest_cache/',
-    tests: 'test',
+    coverageProperty: 'sonar.python.coverage.reportPaths',
   },
   javascript: {
+    sources: 'src',
+    tests: 'test',
     coverage: 'coverage/lcov.info',
     exclusions: 'node_modules/**,bower_components/**,dist/**,build/**',
-    tests: 'test',
+    coverageProperty: 'sonar.javascript.lcov.reportPaths',
   },
   typescript: {
+    sources: 'src',
+    tests: 'test',
     coverage: 'coverage/lcov.info',
     exclusions: 'node_modules/**,bower_components/**,dist/**,build/**,**/*.d.ts',
-    tests: 'test',
+    coverageProperty: 'sonar.javascript.lcov.reportPaths',
   },
   java: {
+    sources: 'src/main',
+    tests: 'src/test',
     coverage: 'target/site/jacoco/jacoco.xml',
     exclusions: 'build/**,target/**,*.class,*.jar',
-    tests: 'src/test',
+    binaries: 'build/classes/java/main',
+    coverageProperty: 'sonar.coverage.jacoco.xmlReportPaths',
   },
   kotlin: {
+    sources: 'src/main',
+    tests: 'src/test',
     coverage: 'build/reports/kover/report.xml',
     exclusions: 'build/**,target/**',
-    tests: 'src/test',
+    binaries: 'build/classes/kotlin/main',
+    coverageProperty: 'sonar.coverage.jacoco.xmlReportPaths',
   },
   go: {
+    sources: '.',
+    tests: '.',
     coverage: 'coverage.out',
     exclusions: 'vendor/**,*.pb.go',
-    tests: '.',
+    coverageProperty: 'sonar.go.coverage.reportPaths',
   },
   csharp: {
+    sources: 'src',
+    tests: 'test',
     coverage: 'coverage.cobertura.xml',
     exclusions: 'bin/**,obj/**,**/node_modules/**',
-    tests: 'test',
+    coverageProperty: 'sonar.cs.coverage.reportPaths',
   },
 };
 
@@ -91,14 +107,13 @@ export const detectLanguage = (dir) => {
  * @returns {string}
  */
 export const buildSonarProps = (projectKey, hostUrl, sources, lang) => {
-  let props = `sonar.host.url=${hostUrl}\nsonar.projectKey=${projectKey}\nsonar.sources=${sources}\n`;
-  if (lang && LANG_CONFIGS[lang]) {
-    const cfg = LANG_CONFIGS[lang];
+  const cfg = lang && LANG_CONFIGS[lang];
+  const src = sources || cfg?.sources || 'src';
+  let props = `sonar.host.url=${hostUrl}\nsonar.projectKey=${projectKey}\nsonar.sources=${src}\n`;
+  if (cfg) {
     props += `sonar.exclusions=${cfg.exclusions}\nsonar.tests=${cfg.tests}\n`;
-    if (lang === 'python') props += `sonar.python.coverage.reportPaths=${cfg.coverage}\n`;
-    else if (lang === 'go') props += `sonar.go.coverage.reportPaths=${cfg.coverage}\n`;
-    else if (lang === 'csharp') props += `sonar.cs.coverage.reportPaths=${cfg.coverage}\n`;
-    else props += `sonar.javascript.lcov.reportPaths=${cfg.coverage}\n`;
+    if (cfg.coverageProperty) props += `${cfg.coverageProperty}=${cfg.coverage}\n`;
+    if (cfg.binaries) props += `sonar.java.binaries=${cfg.binaries}\n`;
   }
   return props;
 };
