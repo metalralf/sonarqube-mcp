@@ -175,6 +175,82 @@ export const getDockerMountPath = () => process.env.SONARQUBE_DOCKER_MOUNT_PATH 
 export const getSourceContext = () => Number.parseInt(process.env.SONARQUBE_SOURCE_CONTEXT || '2', 10);
 
 /**
+ * Auto-detect build tool and attempt to build a compiled language project.
+ * @param {string} dir — project root
+ * @param {{ binaries?: string }} langCfg — language config with optional binaries path
+ * @returns {{ performed: boolean }}
+ */
+export const autoBuild = (dir, langCfg) => {
+  if (!langCfg?.binaries || existsSync(join(dir, langCfg.binaries))) return { performed: false };
+  const hasGradle = existsSync(join(dir, 'build.gradle')) || existsSync(join(dir, 'build.gradle.kts'));
+  const hasMaven = existsSync(join(dir, 'pom.xml'));
+  if (hasGradle) {
+    execSync(`${existsSync(join(dir, 'gradlew')) ? './gradlew' : 'gradle'} build -x test`, { cwd: dir, encoding: 'utf8', timeout: 300000 });
+    return { performed: true };
+  }
+  if (hasMaven) {
+    execSync(`${existsSync(join(dir, 'mvnw')) ? './mvnw' : 'mvn'} compile -DskipTests`, { cwd: dir, encoding: 'utf8', timeout: 300000 });
+    return { performed: true };
+  }
+  return { performed: false };
+};
+
+/**
+ * Run Docker scanner and return output.
+ * @param {string} dir
+ * @returns {string}
+ */
+const runDockerScanner = (dir, baseArgs) => execSync(`${resolveDocker()} run --rm ${getDockerFlags() ? getDockerFlags() + ' ' : ''}-v "${dir}:${getDockerMountPath()}" ${getDockerImage()} ${baseArgs.join(' ')}`, { encoding: 'utf8', timeout: getScannerTimeout() });
+
+/**
+ * Run local sonar-scanner and return output.
+ * @param {string} dir
+ * @returns {string}
+ */
+const runLocalScanner = (dir, baseArgs) => {
+  const scannerBin = existsSync(join(dir, 'node_modules', '.bin', 'sonar-scanner')) ? join(dir, 'node_modules', '.bin', 'sonar-scanner') : 'sonar-scanner';
+  return execSync(`${scannerBin} ${baseArgs.join(' ')}`, { cwd: dir, encoding: 'utf8', timeout: getScannerTimeout() });
+};
+
+export { runDockerScanner, runLocalScanner };
+
+/**
+ * Build hints array from scanner output.
+ * @param {string} output — scanner log
+ * @param {string|null} lang — detected language
+ * @returns {string[]}
+ */
+export const buildScannerHints = (output, lang) => {
+  const hints = [];
+  if (output.includes('No coverage')) hints.push('Coverage report was not found. Run tests with coverage enabled before analysis (e.g. ./gradlew test jacocoTestReport).');
+  if (output.includes('Missing blame information') && lang === 'java') hints.push('SCM blame info is missing. Run analysis from the project root directory with git history.');
+  return hints;
+};
+
+/**
+ * Extract CE task URL from scanner output.
+ * @param {string} output
+ * @param {string} hostUrl
+ * @returns {string|undefined}
+ */
+export const extractCeTaskUrl = (output, hostUrl) => {
+  const re = /api\/ce\/task\?id=([a-f0-9-]+)/;
+  const m = re.exec(output);
+  return m ? `${hostUrl}/api/ce/task?id=${m[1]}` : undefined;
+};
+
+/**
+ * Map common scanner errors to actionable messages.
+ * @param {string} msg — raw error message from scanner
+ * @returns {string|undefined} — mapped message, or undefined if no match
+ */
+export const mapScannerError = (msg) => {
+  if (msg.includes("can't be indexed twice")) return 'Your sonar.sources and sonar.tests paths overlap. Set sonar.sources=src/main (or the correct source directory) and sonar.tests=src/test.';
+  if (msg.includes('No files nor directories matching') || msg.includes('sonar.java.binaries')) return 'No compiled class files found. Build the project first (e.g. ./gradlew build) or set sonar.java.binaries to the correct path.';
+  return undefined;
+};
+
+/**
  * @param {string} v
  * @returns {string}
  */

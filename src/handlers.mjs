@@ -3,7 +3,7 @@ import { execSync } from 'node:child_process';
 import { existsSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { z } from 'zod';
-import { tool, projectKey, componentKey, maxResults, encode, requireKey, componentParams, measureSearch, parseIssueFacets, getHostUrl, filterTools, sonarGet, sonarPost, sonarCheckServer, orgQuery, resolveProjectKey, maybeTruncated, detectLanguage, buildSonarProps, hasDocker, resolveDocker, getDockerImage, getDockerFlags, getScannerTimeout, getDockerMountPath, getSourceContext, LANG_CONFIGS } from './helpers.mjs';
+import { tool, projectKey, componentKey, maxResults, encode, requireKey, componentParams, measureSearch, parseIssueFacets, getHostUrl, filterTools, sonarGet, sonarPost, sonarCheckServer, orgQuery, resolveProjectKey, maybeTruncated, detectLanguage, buildSonarProps, hasDocker, getScannerTimeout, getSourceContext, LANG_CONFIGS, autoBuild, runDockerScanner, runLocalScanner, mapScannerError, buildScannerHints, extractCeTaskUrl } from './helpers.mjs';
 
 const ALL_TOOLS = [
   tool('sonar_projects_create', 'Create a new project in SonarQube. Requires admin permissions.', {
@@ -344,60 +344,25 @@ const ALL_TOOLS = [
       writeFileSync(propsPath, buildSonarProps(projectKey || process.env.SONARQUBE_PROJECT || 'my_project', hostUrl, src, lang));
     }
 
-    const buildLogs = [];
-    if (langCfg?.binaries && !existsSync(join(dir, langCfg.binaries))) {
-      const hasGradle = existsSync(join(dir, 'build.gradle')) || existsSync(join(dir, 'build.gradle.kts'));
-      const hasMaven = existsSync(join(dir, 'pom.xml'));
-      if (hasGradle) {
-        const gradleCmd = existsSync(join(dir, 'gradlew')) ? './gradlew' : 'gradle';
-        buildLogs.push(`Building with ${gradleCmd}...`);
-        execSync(`${gradleCmd} build -x test`, { cwd: dir, encoding: 'utf8', timeout: 300000 });
-      } else if (hasMaven) {
-        const mvnCmd = existsSync(join(dir, 'mvnw')) ? './mvnw' : 'mvn';
-        buildLogs.push(`Building with ${mvnCmd}...`);
-        execSync(`${mvnCmd} compile -DskipTests`, { cwd: dir, encoding: 'utf8', timeout: 300000 });
-      }
-    }
+    const buildResult = autoBuild(dir, langCfg);
 
     let output, scannerType;
     const baseArgs = [];
     if (auth) baseArgs.push(`-Dsonar.token=${auth}`);
     if (projectKey) baseArgs.push(`-Dsonar.projectKey=${projectKey}`);
 
-    const dedupWarnings = new Set();
-
-    if (useDocker) {
-      scannerType = 'docker';
-      const dockerFlags = getDockerFlags();
-      try {
-        output = execSync(`${resolveDocker()} run --rm ${dockerFlags ? dockerFlags + ' ' : ''}-v "${dir}:${getDockerMountPath()}" ${getDockerImage()} ${baseArgs.join(' ')}`, { encoding: 'utf8', timeout: getScannerTimeout() });
-      } catch (e) {
-        const msg = /** @type {Error} */ (e).message;
-        if (msg.includes("can't be indexed twice")) throw new Error('Your sonar.sources and sonar.tests paths overlap. Set sonar.sources=src/main (or the correct source directory) and sonar.tests=src/test.');
-        if (msg.includes('No files nor directories matching') || msg.includes('sonar.java.binaries')) throw new Error('No compiled class files found. Build the project first (e.g. ./gradlew build) or set sonar.java.binaries to the correct path.');
-        if (msg.includes('Missing blame information')) dedupWarnings.add('scm');
-        if (msg.includes('No coverage')) dedupWarnings.add('coverage');
-        throw e;
-      }
-    } else {
-      const scannerBin = existsSync(join(dir, 'node_modules', '.bin', 'sonar-scanner')) ? join(dir, 'node_modules', '.bin', 'sonar-scanner') : 'sonar-scanner';
-      scannerType = 'local';
-      try {
-        output = execSync(`${scannerBin} ${baseArgs.join(' ')}`, { cwd: dir, encoding: 'utf8', timeout: getScannerTimeout() });
-      } catch (e) {
-        const msg = /** @type {Error} */ (e).message;
-        if (msg.includes("can't be indexed twice")) throw new Error('Your sonar.sources and sonar.tests paths overlap. Set sonar.sources=src/main (or the correct source directory) and sonar.tests=src/test.');
-        if (msg.includes('No files nor directories matching') || msg.includes('sonar.java.binaries')) throw new Error('No compiled class files found. Build the project first (e.g. ./gradlew build) or set sonar.java.binaries to the correct path.');
-        throw e;
-      }
+    try {
+      if (useDocker) { scannerType = 'docker'; output = runDockerScanner(dir, baseArgs); }
+      else { scannerType = 'local'; output = runLocalScanner(dir, baseArgs); }
+    } catch (e) {
+      const msg = /** @type {Error} */ (e).message;
+      const mapped = mapScannerError(msg);
+      if (mapped) throw new Error(mapped);
+      throw e;
     }
 
-    const hints = [];
-    if (output.includes('No coverage')) hints.push('Coverage report was not found. Run tests with coverage enabled before analysis (e.g. ./gradlew test jacocoTestReport).');
-    if (output.includes('Missing blame information') && lang === 'java') hints.push('SCM blame info is missing. Run analysis from the project root directory with git history.');
-
-    const ceMatch = output.match(/api\/ce\/task\?id=([a-f0-9-]+)/);
-    const ceTaskUrl = ceMatch ? `${hostUrl}/api/ce/task?id=${ceMatch[1]}` : undefined;
+    const hints = buildScannerHints(output, lang);
+    const ceTaskUrl = extractCeTaskUrl(output, hostUrl);
 
     const pk = projectKey || process.env.SONARQUBE_PROJECT || 'my_project';
 
@@ -407,7 +372,7 @@ const ALL_TOOLS = [
       language: lang || 'unknown',
       dashboardUrl: `${hostUrl}/dashboard?id=${encodeURIComponent(pk)}`,
       ceTaskUrl,
-      buildPerformed: buildLogs.length > 0,
+      buildPerformed: buildResult.performed,
       hints: hints.length ? hints : undefined,
       output,
     };
