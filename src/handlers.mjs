@@ -3,7 +3,7 @@ import { execSync } from 'node:child_process';
 import { existsSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { z } from 'zod';
-import { tool, projectKey, componentKey, maxResults, encode, requireKey, componentParams, measureSearch, parseIssueFacets, getHostUrl, filterTools, sonarGet, sonarPost, sonarCheckServer, orgQuery, resolveProjectKey, maybeTruncated, detectLanguage, buildSonarProps, hasDocker, LANG_CONFIGS } from './helpers.mjs';
+import { tool, projectKey, componentKey, maxResults, encode, requireKey, componentParams, measureSearch, parseIssueFacets, getHostUrl, filterTools, sonarGet, sonarPost, sonarCheckServer, orgQuery, resolveProjectKey, maybeTruncated, detectLanguage, buildSonarProps, hasDocker, resolveDocker } from './helpers.mjs';
 
 const ALL_TOOLS = [
   tool('sonar_projects_create', 'Create a new project in SonarQube. Requires admin permissions.', {
@@ -350,7 +350,7 @@ const ALL_TOOLS = [
 
     if (useDocker) {
       scannerType = 'docker';
-      output = execSync(`docker run --rm --network=host -v "${dir}:/usr/src" sonarsource/sonar-scanner-cli ${baseArgs.join(' ')}`, { encoding: 'utf8', timeout: 300000 });
+      output = execSync(`${resolveDocker()} run --rm --network=host -v "${dir}:/usr/src" sonarsource/sonar-scanner-cli ${baseArgs.join(' ')}`, { encoding: 'utf8', timeout: 300000 });
     } else {
       const scannerBin = existsSync(join(dir, 'node_modules', '.bin', 'sonar-scanner')) ? join(dir, 'node_modules', '.bin', 'sonar-scanner') : 'sonar-scanner';
       scannerType = 'local';

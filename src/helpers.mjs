@@ -108,9 +108,18 @@ export const buildSonarProps = (projectKey, hostUrl, sources, lang) => {
  * Disable with SONARQUBE_DISABLE_DOCKER=true for deterministic tests.
  * @returns {boolean}
  */
+let dockerPath = '';
+const resolveDocker = () => {
+  if (dockerPath) return dockerPath;
+  try { dockerPath = execSync('command -v docker', { encoding: 'utf8', timeout: 3000 }).trim(); }
+  catch { dockerPath = '/usr/bin/docker'; }
+  return dockerPath;
+};
+export { resolveDocker };
+
 export const hasDocker = () => {
   if (process.env.SONARQUBE_DISABLE_DOCKER === 'true') return false;
-  try { execSync('docker info', { stdio: 'ignore', timeout: 5000 }); return true; }
+  try { execSync(`${resolveDocker()} info`, { stdio: 'ignore', timeout: 5000 }); return true; }
   catch { return false; }
 };
 
