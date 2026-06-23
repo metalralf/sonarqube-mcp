@@ -45,7 +45,7 @@ const parseJson = async (req) => {
  */
 const handleRequest = async (req, res, tools, toolMap, schemas, host, port) => {
   const url = new URL(req.url || '/', `http://${host}:${port}`);
-  const corsHeaders = cors('*');
+  const corsHeaders = cors(process.env.SONARQUBE_HTTP_ALLOWED_ORIGINS || '*');
 
   if (req.method === 'OPTIONS') {
     res.writeHead(204, corsHeaders);

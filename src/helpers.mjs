@@ -123,11 +123,23 @@ export const hasDocker = () => {
   catch { return false; }
 };
 
-/** @type {string} — override with SONARQUBE_DOCKER_IMAGE */
+/**
+ * Get Docker image for scanner.
+ * @returns {string} — override with SONARQUBE_DOCKER_IMAGE
+ */
 export const getDockerImage = () => process.env.SONARQUBE_DOCKER_IMAGE || 'sonarsource/sonar-scanner-cli';
 
-/** @type {string} — override with SONARQUBE_DOCKER_FLAGS (e.g. '--network=bridge' or '') */
+/**
+ * Get Docker run flags.
+ * @returns {string} — override with SONARQUBE_DOCKER_FLAGS (e.g. '--network=bridge' or '')
+ */
 export const getDockerFlags = () => process.env.SONARQUBE_DOCKER_FLAGS ?? '--network=host';
+
+/**
+ * Get scanner timeout in ms.
+ * @returns {number} — override with SONARQUBE_SCANNER_TIMEOUT (default 300000 = 5 min)
+ */
+export const getScannerTimeout = () => Number.parseInt(process.env.SONARQUBE_SCANNER_TIMEOUT || '300000', 10);
 
 /**
  * @param {string} v

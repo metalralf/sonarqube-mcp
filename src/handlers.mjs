@@ -3,7 +3,7 @@ import { execSync } from 'node:child_process';
 import { existsSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { z } from 'zod';
-import { tool, projectKey, componentKey, maxResults, encode, requireKey, componentParams, measureSearch, parseIssueFacets, getHostUrl, filterTools, sonarGet, sonarPost, sonarCheckServer, orgQuery, resolveProjectKey, maybeTruncated, detectLanguage, buildSonarProps, hasDocker, resolveDocker, getDockerImage, getDockerFlags } from './helpers.mjs';
+import { tool, projectKey, componentKey, maxResults, encode, requireKey, componentParams, measureSearch, parseIssueFacets, getHostUrl, filterTools, sonarGet, sonarPost, sonarCheckServer, orgQuery, resolveProjectKey, maybeTruncated, detectLanguage, buildSonarProps, hasDocker, resolveDocker, getDockerImage, getDockerFlags, getScannerTimeout } from './helpers.mjs';
 
 const ALL_TOOLS = [
   tool('sonar_projects_create', 'Create a new project in SonarQube. Requires admin permissions.', {
@@ -317,7 +317,7 @@ const ALL_TOOLS = [
     if (hasPnpm) { cmd = 'pnpm'; args = ['add', '-D', 'sonar-scanner']; }
     else if (hasYarn) { cmd = 'yarn'; args = ['add', '-D', 'sonar-scanner']; }
     else { cmd = 'npm'; args = ['install', '--save-dev', 'sonar-scanner']; }
-    return { installed: true, packageManager: cmd, output: execSync(`${cmd} ${args.join(' ')}`, { cwd: dir, encoding: 'utf8', timeout: 120000 }) };
+    return { installed: true, packageManager: cmd, output: execSync(`${cmd} ${args.join(' ')}`, { cwd: dir, encoding: 'utf8', timeout: getScannerTimeout() }) };
   }),
 
   tool('sonar_run_analysis', 'Run sonar-scanner analysis (auto-detects language, prefers Docker).', {
@@ -351,11 +351,11 @@ const ALL_TOOLS = [
     if (useDocker) {
       scannerType = 'docker';
       const dockerFlags = getDockerFlags();
-      output = execSync(`${resolveDocker()} run --rm ${dockerFlags ? dockerFlags + ' ' : ''}-v "${dir}:/usr/src" ${getDockerImage()} ${baseArgs.join(' ')}`, { encoding: 'utf8', timeout: 300000 });
+      output = execSync(`${resolveDocker()} run --rm ${dockerFlags ? dockerFlags + ' ' : ''}-v "${dir}:/usr/src" ${getDockerImage()} ${baseArgs.join(' ')}`, { encoding: 'utf8', timeout: getScannerTimeout() });
     } else {
       const scannerBin = existsSync(join(dir, 'node_modules', '.bin', 'sonar-scanner')) ? join(dir, 'node_modules', '.bin', 'sonar-scanner') : 'sonar-scanner';
       scannerType = 'local';
-      output = execSync(`${scannerBin} ${baseArgs.join(' ')}`, { cwd: dir, encoding: 'utf8', timeout: 300000 });
+      output = execSync(`${scannerBin} ${baseArgs.join(' ')}`, { cwd: dir, encoding: 'utf8', timeout: getScannerTimeout() });
     }
 
     return {
