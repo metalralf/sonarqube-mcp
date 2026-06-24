@@ -32,7 +32,7 @@ test/
 
 ## Agents
 
-Agent definitions for commit/push, version management, changelog generation, test writing, refactoring, coverage analysis, and deep research live alongside the project. Delegate specialized tasks to them instead of doing everything in the main thread.
+Agent definitions for commit/push, version management, changelog generation, test writing, refactoring, coverage analysis, and deep research live alongside the project. If you have access to tools/agents for similar tasks, delegate specialized tasks to them instead of doing everything in the main thread.
 
 ## Commands
 
