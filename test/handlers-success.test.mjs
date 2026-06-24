@@ -683,4 +683,5 @@ describe('handler success paths', () => {
     assert.equal(res.total, 0);
     assert.ok(res.message);
   });
+
 });

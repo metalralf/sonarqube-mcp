@@ -11,6 +11,7 @@ describe('tools', () => {
     'sonar_duplications',
     'sonar_file_coverage_details',
     'sonar_file_issues',
+    'sonar_fix_and_verify',
     'sonar_change_hotspot_status',
     'sonar_hotspot_details',
     'sonar_hotspots',

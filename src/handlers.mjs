@@ -510,6 +510,27 @@ const ALL_TOOLS = [
       since: createdAfter,
     };
   }),
+
+  tool('sonar_fix_and_verify', 'Fix → rebuild → re-analyze → verify issue resolved — closes the dev loop.', {
+    issueKey: z.string().describe('Issue key to verify (e.g. from sonar_issues or sonar_project_report)'),
+    cwd: z.string().optional().describe('Project root'),
+    projectKey,
+    host: z.string().optional().describe('SonarQube URL'),
+    language: z.enum(['python', 'javascript', 'typescript', 'java', 'kotlin', 'go', 'csharp']).optional().describe('Project language'),
+  }, async ({ issueKey, cwd, projectKey: pk, host, language }) => {
+    const runH = ALL_TOOLS.find((t) => t.name === 'sonar_run_analysis').handler;
+    const reportH = ALL_TOOLS.find((t) => t.name === 'sonar_project_report').handler;
+    const scan = await runH({ cwd, projectKey: pk, host, language });
+    const report = await reportH({ projectKey: pk });
+    let resolved = false;
+    if (issueKey) {
+      try {
+        const check = await sonarGet(`/api/issues/search?issues=${encode(issueKey)}`);
+        resolved = check.total === 0;
+      } catch { resolved = false; }
+    }
+    return { fixVerified: resolved, scan, report, issueKey };
+  }),
 ];
 
 /** @type {Array<{ name: string; description: string; schema: Record<string, import('zod').ZodTypeAny>; handler: Function }>} */

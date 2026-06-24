@@ -348,7 +348,7 @@ export const TOOL_CATEGORIES = {
   worst: ['sonar_worst_metrics'],
   scm: ['sonar_source', 'sonar_scm_info'],
   branches: ['sonar_list_branches', 'sonar_list_pull_requests'],
-  admin: ['sonar_list_webhooks', 'sonar_list_languages', 'sonar_ping', 'sonar_setup_scanner', 'sonar_run_analysis'],
+  admin: ['sonar_list_webhooks', 'sonar_list_languages', 'sonar_ping', 'sonar_setup_scanner', 'sonar_run_analysis', 'sonar_fix_and_verify'],
   rules: ['sonar_rule'],
   raw: ['sonar_raw'],
 };
