@@ -24,5 +24,7 @@ Files to update:
 3. `README.md` — update all `x.y.z` references
 4. `CHANGELOG.md` — add new version section with current date
 
+**IMPORTANT: Verify today's date before writing.** Run `date +%F` and use that date in the changelog. Do not guess or reuse a date from a previous entry.
+
 Check the current version from `git tag -l | sort -V | tail -1` first.
 Never tag releases yourself — the maintainer does this manually.
