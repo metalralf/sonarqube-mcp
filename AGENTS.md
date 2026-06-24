@@ -30,6 +30,10 @@ test/
   api.test.mjs / api-error.test.mjs / config.test.mjs / helpers.test.mjs
 ```
 
+## Agents
+
+Agent definitions for commit/push, version management, changelog generation, test writing, refactoring, coverage analysis, and deep research live alongside the project. Delegate specialized tasks to them instead of doing everything in the main thread.
+
 ## Commands
 
 ```bash
@@ -147,10 +151,6 @@ All configurable — see full table in README. Key ones:
 4. Run `sonar-scanner -Dsonar.token=...` for dogfood analysis
 5. Check quality gate via `sonar_quality_gate` tool
 6. Bump version in `package.json` + `src/index.mjs` + `CHANGELOG.md` + update `#version` in `README.md`
-
-## Project-level agents
-
-`.opencode/agents/` contains reusable subagent definitions for common workflows. Agents are invoked via `@agent-name` in opencode. If these exist, delegate specialized tasks (commit/push, version bumps, changelog, test writing, refactoring, research, coverage analysis) instead of doing everything in the main thread.
 
 ## Rules (no exceptions)
 
