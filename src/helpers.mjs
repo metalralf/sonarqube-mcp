@@ -338,7 +338,7 @@ export const measureSearch = (metricKey, valueKey, defaultThresh, descend) => as
 
 /** @type {Record<string, string[]>} */
 export const TOOL_CATEGORIES = {
-  projects: ['sonar_search_projects', 'sonar_summary', 'sonar_analysis_status', 'sonar_project_details', 'sonar_projects_create'],
+  projects: ['sonar_search_projects', 'sonar_summary', 'sonar_project_report', 'sonar_analyze_and_report', 'sonar_analysis_status', 'sonar_project_details', 'sonar_projects_create'],
   issues: ['sonar_issues', 'sonar_issues_summary', 'sonar_new_issues', 'sonar_set_issue_status', 'sonar_issues_bulk_transition'],
   hotspots: ['sonar_hotspots', 'sonar_hotspot_details', 'sonar_change_hotspot_status'],
   quality: ['sonar_quality_gate', 'sonar_list_quality_gates', 'sonar_measures', 'sonar_search_metrics'],

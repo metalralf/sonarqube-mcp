@@ -639,4 +639,48 @@ describe('handler success paths', () => {
     assert.equal(res.total, 0);
     assert.ok(Array.isArray(res.issues));
   });
+
+  it('sonar_project_report returns aggregated health', async () => {
+    const calls = mockFetch([
+      () => jsonOk({ projectStatus: { status: 'OK' } }),
+      () => jsonOk({ component: { measures: [{ metric: 'coverage', value: '85.0' }] } }),
+      () => jsonOk({ total: 2, facets: [{ property: 'severities', values: [{ val: 'MAJOR', count: 2 }] }, { property: 'types', values: [{ val: 'CODE_SMELL', count: 2 }] }] }),
+      () => jsonOk({ hotspots: [{ key: 'h1' }], paging: { total: 1, pageSize: 500 } }),
+      () => jsonOk({ branches: [{ name: 'main', isMain: true, analysisDate: '2024-01-01', status: { qualityGateStatus: 'OK' } }] }),
+      () => jsonOk({ measures: [] }),
+    ]);
+    const res = await h('sonar_project_report')({ projectKey: 'testproj' });
+    assert.equal(res.qualityGate, 'OK');
+    assert.equal(res.metrics.coverage, '85.0');
+    assert.equal(res.hotspots.total, 1);
+  });
+
+  it('sonar_file_issues returns issues and source', async () => {
+    const calls = mockFetch([
+      () => jsonOk({ total: 1, issues: [{ key: 'i1', severity: 'MAJOR', type: 'CODE_SMELL', line: 10, component: 'proj:src/file.js' }], paging: { total: 1, pageSize: 50 } }),
+      () => jsonOk({ sources: [{ line: 10, code: 'const x = 1;' }] }),
+    ]);
+    const res = await h('sonar_file_issues')({ key: 'proj:src/file.js', from: 1, to: 20, severities: 'MAJOR' });
+    assert.equal(res.total, 1);
+    assert.equal(res.issues[0].key, 'i1');
+    assert.equal(res.source.length, 1);
+  });
+
+  it('sonar_new_issues_since returns new issues', async () => {
+    const calls = mockFetch([
+      () => jsonOk({ analyses: [{ date: '2024-06-01' }, { date: '2024-05-01' }] }),
+      () => jsonOk({ total: 2, issues: [{ key: 'new1', severity: 'MAJOR', type: 'BUG', line: 15 }, { key: 'new2', severity: 'INFO', type: 'CODE_SMELL', line: 20 }], paging: { total: 2, pageSize: 500 } }),
+    ]);
+    const res = await h('sonar_new_issues_since')({ projectKey: 'testproj', compact: true });
+    assert.equal(res.total, 2);
+    assert.equal(res.newIssues.length, 2);
+    assert.ok(res.since);
+  });
+
+  it('sonar_new_issues_since handles no previous analysis', async () => {
+    const calls = mockFetch([() => jsonOk({ analyses: [] })]);
+    const res = await h('sonar_new_issues_since')({ projectKey: 'testproj' });
+    assert.equal(res.total, 0);
+    assert.ok(res.message);
+  });
 });

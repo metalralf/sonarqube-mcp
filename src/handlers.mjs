@@ -418,6 +418,98 @@ const ALL_TOOLS = [
     requireKey(key);
     return sonarGet(`/api/duplications/show?key=${encode(key)}`);
   }),
+
+  // --- Composite / workflow tools ---
+
+  tool('sonar_project_report', 'One-shot project health: QG + measures + issues summary + hotspots + worst files + branches.', {
+    projectKey,
+  }, async ({ projectKey: pk }) => {
+    const key = resolveProjectKey({ projectKey: pk });
+    const [quality, measures, issueData, hotspots, branches, worst] = await Promise.all([
+      sonarGet(`/api/qualitygates/project_status?projectKey=${encode(key)}`).catch(() => null),
+      sonarGet(`/api/measures/component?component=${encode(key)}&metricKeys=bugs,vulnerabilities,code_smells,coverage,duplicated_lines_density,ncloc,reliability_rating,security_rating,sqale_rating`).catch(() => null),
+      sonarGet(`/api/issues/search?componentKeys=${encode(key)}&ps=1&resolved=false&facets=severities,types`).catch(() => null),
+      sonarGet(`/api/hotspots/search?projectKey=${encode(key)}&ps=1`).catch(() => ({ hotspots: [], paging: { total: 0 } })),
+      sonarGet(`/api/project_branches/list?project=${encode(key)}`).catch(() => null),
+      sonarGet(`/api/measures/search?projectKeys=${encode(key)}&metricKeys=coverage,duplicated_lines_density,cognitive_complexity&ps=500`).catch(() => null),
+    ]);
+    const metricMap = {};
+    for (const m of measures?.component?.measures || []) metricMap[m.metric] = m.value;
+    const { bySeverity, byType } = parseIssueFacets(issueData);
+    const severityOrder = ['BLOCKER', 'CRITICAL', 'MAJOR', 'MINOR', 'INFO'];
+    const topSeverities = severityOrder.filter((s) => bySeverity[s]).map((s) => `${s}: ${bySeverity[s]}`);
+    const worstFiles = {};
+    for (const m of worst?.measures || []) {
+      if (m.component === key) continue;
+      const file = m.component.split(':').pop();
+      if (!worstFiles[file]) worstFiles[file] = {};
+      worstFiles[file][m.metric] = Number.parseFloat(m.value);
+    }
+    const sorted = Object.entries(worstFiles).sort((a, b) => (a[1].coverage || 100) - (b[1].coverage || 100)).slice(0, 5).map(([p, v]) => ({ path: p, coverage: v.coverage, complexity: v.cognitive_complexity }));
+    return {
+      projectKey: key,
+      qualityGate: quality?.projectStatus?.status || 'NONE',
+      metrics: metricMap,
+      issues: { total: issueData?.total || 0, by_severity: bySeverity, by_type: byType, top_severities: topSeverities },
+      hotspots: { total: hotspots?.paging?.total || 0, status: hotspots?.hotspots?.[0]?.status || 'NONE' },
+      branches: (branches?.branches || []).map((b) => ({ name: b.name, isMain: b.isMain, analysisDate: b.analysisDate, qg: b.status?.qualityGateStatus })),
+      worstFiles: sorted,
+    };
+  }),
+
+  tool('sonar_analyze_and_report', 'Run analysis, then return full project report — saves 6+ calls into 1.', {
+    cwd: z.string().optional().describe('Project root'),
+    token: z.string().optional().describe('Token'),
+    projectKey,
+    host: z.string().optional().describe('SonarQube URL'),
+    sources: z.string().optional().describe('Source dirs'),
+    language: z.enum(['python', 'javascript', 'typescript', 'java', 'kotlin', 'go', 'csharp']).optional().describe('Project language'),
+  }, async ({ cwd, token, projectKey: pk, host, sources, language }) => {
+    const scanResult = await ALL_TOOLS.find((t) => t.name === 'sonar_run_analysis').handler({ cwd, token, projectKey: pk, host, sources, language });
+    const report = await ALL_TOOLS.find((t) => t.name === 'sonar_project_report').handler({ projectKey: pk });
+    return { scan: { success: scanResult.success, scanner: scanResult.scanner, language: scanResult.language, dashboardUrl: scanResult.dashboardUrl, ceTaskUrl: scanResult.ceTaskUrl, hints: scanResult.hints }, report };
+  }),
+
+  tool('sonar_file_issues', 'Get issues + source context for a file — saves 2 calls into 1.', {
+    key: componentKey,
+    from: z.number().optional().describe('Starting line'),
+    to: z.number().optional().describe('Ending line'),
+    severities: z.union([z.string(), z.array(z.string())]).optional().describe('Filter by severity'),
+    types: z.union([z.string(), z.array(z.string())]).optional().describe('Filter by type'),
+  }, async ({ key, from, to, severities, types }) => {
+    requireKey(key);
+    const params = new URLSearchParams({ componentKeys: key, ps: '50', s: 'SEVERITY', asc: 'false' });
+    if (severities) params.set('severities', Array.isArray(severities) ? severities.join(',') : severities);
+    if (types) params.set('types', Array.isArray(types) ? types.join(',') : types);
+    const [issues, source] = await Promise.all([
+      sonarGet(`/api/issues/search?${params.toString()}`).catch(() => null),
+      sonarGet(`/api/sources/lines?${componentParams(key, from, to).toString()}`).catch(() => null),
+    ]);
+    return { total: issues?.total || 0, issues: (issues?.issues || []).map(({ flows, textRange, messageFormattings, codeVariants, internalTags, ...rest }) => rest), source: source?.sources || [] };
+  }),
+
+  tool('sonar_new_issues_since', 'New issues since last analysis + project context — saves 2+ calls into 1.', {
+    projectKey,
+    severities: z.union([z.string(), z.array(z.string())]).optional().describe('Filter by severity'),
+    types: z.union([z.string(), z.array(z.string())]).optional().describe('Filter by type'),
+    limit: maxResults,
+    compact: z.boolean().optional().describe('Strip verbose fields'),
+  }, async ({ projectKey: pk, severities, types, limit, compact }) => {
+    const key = resolveProjectKey({ projectKey: pk });
+    const analyses = await sonarGet(`/api/project_analyses/search?project=${encode(key)}&ps=2`).catch(() => null);
+    const createdAfter = analyses?.analyses?.[1]?.date || analyses?.analyses?.[0]?.date;
+    if (!createdAfter) return { total: 0, newIssues: [], message: 'No previous analysis found to compare against.', projectKey: key };
+    const params = new URLSearchParams({ componentKeys: key, ps: String(Math.min(Number(limit) || 30, 500)), s: 'SEVERITY', asc: 'false', createdAfter });
+    if (severities) params.set('severities', Array.isArray(severities) ? severities.join(',') : severities);
+    if (types) params.set('types', Array.isArray(types) ? types.join(',') : types);
+    const data = await sonarGet(`/api/issues/search?${params.toString()}`);
+    return {
+      projectKey: key,
+      total: data.total,
+      newIssues: compact && data.issues ? data.issues.map(({ flows, textRange, messageFormattings, codeVariants, internalTags, ...rest }) => rest) : (data.issues || []),
+      since: createdAfter,
+    };
+  }),
 ];
 
 /** @type {Array<{ name: string; description: string; schema: Record<string, import('zod').ZodTypeAny>; handler: Function }>} */

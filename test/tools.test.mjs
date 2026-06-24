@@ -6,9 +6,11 @@ describe('tools', () => {
   const toolNames = TOOL_CONFIGS.map((t) => t.name).sort();
   const expected = [
     'sonar_analysis_status',
+    'sonar_analyze_and_report',
     'sonar_coverage_files',
     'sonar_duplications',
     'sonar_file_coverage_details',
+    'sonar_file_issues',
     'sonar_change_hotspot_status',
     'sonar_hotspot_details',
     'sonar_hotspots',
@@ -23,9 +25,11 @@ describe('tools', () => {
     'sonar_measures',
     'sonar_metrics_history',
     'sonar_new_issues',
+    'sonar_new_issues_since',
     'sonar_ping',
     'sonar_projects_create',
     'sonar_project_details',
+    'sonar_project_report',
     'sonar_quality_gate',
     'sonar_raw',
     'sonar_rule',
