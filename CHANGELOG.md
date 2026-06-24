@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.5.0 (2026-06-23)
+
+- **4 composite tools**: `sonar_project_report`, `sonar_analyze_and_report`, `sonar_file_issues`, `sonar_new_issues_since` — saves 6+ API calls into 1
+- **`sonar_fix_and_verify`**: fix → rebuild → re-analyze → verify issue resolved — closes the dev loop
+- **39 total tools** (was 34)
+- **7 opencode agent definitions**: commit-pusher, version-manager, changelog-maker, coverage-gap-finder, info-gatherer, test-writer, refactor-agent
+- `.opencode/agents/*.md` — auto-discovered by opencode, works for all users
+- `opencode.jsonc.example` updated with full agent JSON config
+- `AGENTS.md` updated with generic agent delegation guidance
+- All pre-existing 1.4.x fixes included: Java/Kotlin builds, error wrapping, auto-build, config scaffolding
+
+## 1.4.2 (2026-06-23)
+
+- **Auto-build Java/Kotlin**: detects missing `build/classes/` and runs `./gradlew build -x test` or `./mvnw compile -DskipTests` before analysis
+- **CE task URL**: `ceTaskUrl` returned in response — agent can poll via `sonar_raw`
+- Updated `AGENTS.md` with new test files, helpers, 18 env vars, LANG_CONFIGS rule
+
 ## 1.4.1 (2026-06-23)
 
 - **Java/Kotlin fixes**: sources=src/main, binaries auto-set, jacoco XML reports

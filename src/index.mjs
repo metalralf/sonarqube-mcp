@@ -9,7 +9,7 @@ import { getHostUrl, getToken, log } from './api.mjs';
 
 const transport = process.env.SONARQUBE_TRANSPORT || 'stdio';
 
-const server = new McpServer({ name: 'sonarqube-mcp', version: '1.4.1' }, { capabilities: { tools: {} } });
+const server = new McpServer({ name: 'sonarqube-mcp', version: '1.5.0' }, { capabilities: { tools: {} } });
 
 for (const { name, description, schema, handler } of TOOL_CONFIGS) {
   server.registerTool(name, { description, inputSchema: z.object(schema).strict() }, async (params) => {
