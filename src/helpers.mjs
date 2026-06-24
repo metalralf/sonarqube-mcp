@@ -106,7 +106,7 @@ export const detectLanguage = (dir) => {
  * @param {Language|null} lang
  * @returns {string}
  */
-export const buildSonarProps = (projectKey, hostUrl, sources, lang) => {
+export const buildSonarProps = (projectKey, hostUrl, sources, lang, dir) => {
   const cfg = lang && LANG_CONFIGS[lang];
   const src = sources || cfg?.sources || 'src';
   let props = `sonar.host.url=${hostUrl}\nsonar.projectKey=${projectKey}\nsonar.sources=${src}\n`;
@@ -114,6 +114,12 @@ export const buildSonarProps = (projectKey, hostUrl, sources, lang) => {
     props += `sonar.exclusions=${cfg.exclusions}\nsonar.tests=${cfg.tests}\n`;
     if (cfg.coverageProperty) props += `${cfg.coverageProperty}=${cfg.coverage}\n`;
     if (cfg.binaries) props += `sonar.java.binaries=${cfg.binaries}\n`;
+  }
+  if (dir) {
+    const javaVersion = detectJavaVersion(dir);
+    if (javaVersion) props += `sonar.java.source=${javaVersion}\n`;
+    const branch = detectGitBranch(dir);
+    if (branch && branch !== 'HEAD') props += `sonar.branch.name=${branch}\n`;
   }
   return props;
 };
@@ -193,6 +199,60 @@ export const autoBuild = (dir, langCfg) => {
     return { performed: true };
   }
   return { performed: false };
+};
+
+/**
+ * Detect Java version from build.gradle or pom.xml.
+ * @param {string} dir — project root
+ * @returns {number|null} — Java version (e.g. 21), or null
+ */
+export const detectJavaVersion = (dir) => {
+  const gradle = join(dir, 'build.gradle');
+  if (existsSync(gradle)) {
+    const text = readFileSync(gradle, 'utf8');
+    const m = text.match(/sourceCompatibility\s*=\s*['"]?(\d+)/) || text.match(/JavaVersion\.VERSION_(\d+)/);
+    if (m) return Number.parseInt(m[1], 10);
+    const m2 = text.match(/java\s*\{[^}]*sourceCompatibility\s*=\s*(\d+)/s);
+    if (m2) return Number.parseInt(m2[1], 10);
+  }
+  const pom = join(dir, 'pom.xml');
+  if (existsSync(pom)) {
+    const text = readFileSync(pom, 'utf8');
+    const m = text.match(/<java\.version>(\d+)<\/java\.version>/) || text.match(/<maven\.compiler\.(source|release)>(\d+)<\/maven\.compiler\./);
+    if (m) return Number.parseInt(m[1] || m[2], 10);
+  }
+  return null;
+};
+
+/**
+ * Detect if Gradle or Maven project has submodules.
+ * @param {string} dir — project root
+ * @returns {{ hasSubmodules: boolean, type?: string }}
+ */
+export const detectMultiModule = (dir) => {
+  const settings = ['settings.gradle', 'settings.gradle.kts'].find((f) => existsSync(join(dir, f)));
+  if (settings) {
+    const text = readFileSync(join(dir, settings), 'utf8');
+    if (text.includes('include ')) return { hasSubmodules: true, type: 'Gradle' };
+  }
+  const pom = join(dir, 'pom.xml');
+  if (existsSync(pom)) {
+    const text = readFileSync(pom, 'utf8');
+    if (text.includes('<module>')) return { hasSubmodules: true, type: 'Maven' };
+  }
+  return { hasSubmodules: false };
+};
+
+/**
+ * Detect current git branch.
+ * @param {string} dir — project root
+ * @returns {string|null}
+ */
+export const detectGitBranch = (dir) => {
+  try {
+    const branch = execSync('git rev-parse --abbrev-ref HEAD', { cwd: dir, encoding: 'utf8', timeout: 5000 }).trim();
+    return branch || null;
+  } catch { return null; }
 };
 
 /**

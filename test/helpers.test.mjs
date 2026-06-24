@@ -356,3 +356,62 @@ describe('helpers — scanner utilities', () => {
     assert.equal(extractCeTaskUrl('ANALYSIS SUCCESSFUL', 'http://sq:9000'), undefined);
   });
 });
+
+describe('helpers — detectJavaVersion', () => {
+  let tmpDir;
+  /** @type {(name: string, content: string) => void} */
+  let write;
+
+  before(async () => {
+    const [{ mkdtempSync, writeFileSync, rmSync, readdirSync }, { join: joinPath }, { tmpdir }] = await Promise.all([import('node:fs'), import('node:path'), import('node:os')]);
+    tmpDir = mkdtempSync(joinPath(tmpdir(), 'jv-test-'));
+    write = (name, content) => writeFileSync(joinPath(tmpDir, name), content);
+  });
+
+  after(async () => {
+    const { rmSync } = await import('node:fs');
+    if (tmpDir) rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  beforeEach(() => {
+    try { for (const f of readdirSync(tmpDir)) rmSync(tmpDir + '/' + f, { recursive: true, force: true }); } catch {}
+  });
+
+  it('detects java version from gradle sourceCompatibility', async () => {
+    const { detectJavaVersion } = await import('../src/helpers.mjs');
+    write('build.gradle', 'sourceCompatibility = 21');
+    assert.equal(detectJavaVersion(tmpDir), 21);
+  });
+
+  it('detects java version from pom.xml java.version', async () => {
+    const { detectJavaVersion } = await import('../src/helpers.mjs');
+    write('pom.xml', '<properties><java.version>17</java.version></properties>');
+    assert.equal(detectJavaVersion(tmpDir), 17);
+  });
+
+  it('returns null for unknown projects', async () => {
+    const { detectJavaVersion } = await import('../src/helpers.mjs');
+    assert.equal(detectJavaVersion(tmpDir), null);
+  });
+
+  it('detects multi-module gradle projects', async () => {
+    const { detectMultiModule } = await import('../src/helpers.mjs');
+    write('settings.gradle', "include 'sub1', 'sub2'");
+    const result = detectMultiModule(tmpDir);
+    assert.ok(result.hasSubmodules);
+    assert.equal(result.type, 'Gradle');
+  });
+
+  it('detects multi-module maven projects', async () => {
+    const { detectMultiModule } = await import('../src/helpers.mjs');
+    write('pom.xml', '<modules><module>sub1</module></modules>');
+    const result = detectMultiModule(tmpDir);
+    assert.ok(result.hasSubmodules);
+    assert.equal(result.type, 'Maven');
+  });
+
+  it('returns no submodules for single-module projects', async () => {
+    const { detectMultiModule } = await import('../src/helpers.mjs');
+    assert.equal(detectMultiModule(tmpDir).hasSubmodules, false);
+  });
+});

@@ -341,7 +341,7 @@ const ALL_TOOLS = [
     const propsPath = join(dir, 'sonar-project.properties');
 
     if (!existsSync(propsPath)) {
-      writeFileSync(propsPath, buildSonarProps(projectKey || process.env.SONARQUBE_PROJECT || 'my_project', hostUrl, src, lang));
+      writeFileSync(propsPath, buildSonarProps(projectKey || process.env.SONARQUBE_PROJECT || 'my_project', hostUrl, src, lang, dir));
     }
 
     const buildResult = autoBuild(dir, langCfg);
