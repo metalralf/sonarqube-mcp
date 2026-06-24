@@ -1,6 +1,6 @@
 # sonarqube-mcp
 
-An MCP server that exposes SonarQube data as AI agent tools. **34 tools** — the most comprehensive SonarQube MCP implementation available. Covers projects, issues, quality gates, hotspots, coverage, SCM, webhooks, metrics history, worst-metric ranking, and more.
+An MCP server that exposes SonarQube data as AI agent tools. **39 tools** — the most comprehensive SonarQube MCP implementation available. Covers projects, issues, quality gates, hotspots, coverage, SCM, webhooks, metrics history, worst-metric ranking, and composite workflow tools.
 
 *Dogfooding: this project is checked via its own tools.*
 
@@ -81,7 +81,17 @@ An MCP server that exposes SonarQube data as AI agent tools. **34 tools** — th
 }
 ```
 
-## Tools (34)
+## Tools (39)
+
+### Composite / Workflow (5 tools)
+
+| Tool | Purpose |
+|---|---|
+| `sonar_project_report` | One-shot: QG + measures + issues + hotspots + worst files + branches |
+| `sonar_analyze_and_report` | Analyze + build + full report in 1 call |
+| `sonar_file_issues` | File-level issues + source context |
+| `sonar_new_issues_since` | New issues since last analysis + project context |
+| `sonar_fix_and_verify` | Fix → rebuild → re-analyze → verify issue resolved |
 
 ### Discovery & Status (7 tools)
 
@@ -159,7 +169,7 @@ An MCP server that exposes SonarQube data as AI agent tools. **34 tools** — th
 | `sonar_worst_metrics` | Rank files by worst coverage, dup, complexity |
 | `sonar_search_metrics` | Metric definitions with domain, type, direction |
 
-### Administration (4 tools)
+### Administration (5 tools)
 
 | Tool | Purpose |
 |---|---|
@@ -208,7 +218,7 @@ All configuration is via env vars. None are required at module scope — they're
 
 | Env var | Default | Description |
 |---|---|---|
-| `SONARQUBE_TOOLSETS` | all | Comma-separated categories: `projects,issues,hotspots,quality,coverage,duplications,history,worst,scm,branches,admin,rules,raw` |
+| `SONARQUBE_TOOLSETS` | all | Comma-separated categories: `projects,issues,hotspots,quality,coverage,duplications,history,worst,scm,branches,admin,rules,raw,composite` |
 | `SONARQUBE_READ_ONLY` | `false` | `true` disables `sonar_set_issue_status`, `sonar_change_hotspot_status`, `sonar_run_analysis`, `sonar_setup_scanner` |
 
 ### Toolset filtering
@@ -228,6 +238,7 @@ All configuration is via env vars. None are required at module scope — they're
 | `admin` | `list_webhooks`, `list_languages`, `ping`, `setup_scanner`, `run_analysis` |
 | `rules` | `rule` |
 | `raw` | `raw` |
+| `composite` | `project_report`, `analyze_and_report`, `file_issues`, `new_issues_since`, `fix_and_verify` |
 
 ```json
 "environment": { "SONARQUBE_TOOLSETS": "issues,quality" }

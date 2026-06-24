@@ -351,6 +351,7 @@ export const TOOL_CATEGORIES = {
   admin: ['sonar_list_webhooks', 'sonar_list_languages', 'sonar_ping', 'sonar_setup_scanner', 'sonar_run_analysis', 'sonar_fix_and_verify'],
   rules: ['sonar_rule'],
   raw: ['sonar_raw'],
+  composite: ['sonar_project_report', 'sonar_analyze_and_report', 'sonar_file_issues', 'sonar_new_issues_since', 'sonar_fix_and_verify'],
 };
 
 /** @type {Set<string>} */
