@@ -11,5 +11,42 @@
         "SONARQUBE_PROJECT": "my_project"
       }
     }
+  },
+  "agent": {
+    "commit-pusher": {
+      "description": "Stage, commit with conventional message, and push to remote",
+      "prompt": "{file:.opencode/agents/commit-pusher.md}",
+      "temperature": 0.1
+    },
+    "version-manager": {
+      "description": "Bump version in package.json, src/index.mjs, CHANGELOG.md, and README.md",
+      "prompt": "{file:.opencode/agents/version-manager.md}",
+      "temperature": 0.1
+    },
+    "changelog-maker": {
+      "description": "Generate changelog entries from git history between versions",
+      "prompt": "{file:.opencode/agents/changelog-maker.md}",
+      "temperature": 0.1
+    },
+    "coverage-gap-finder": {
+      "description": "Analyze SonarQube coverage to find fixable branch gaps",
+      "prompt": "{file:.opencode/agents/coverage-gap-finder.md}",
+      "model": "opencode/deepseek-v4-flash"
+    },
+    "info-gatherer": {
+      "description": "Deep research — query context7 docs, fetch GitHub issues, read websites",
+      "prompt": "{file:.opencode/agents/info-gatherer.md}",
+      "temperature": 0.0
+    },
+    "test-writer": {
+      "description": "Write handler success tests using the mockFetch pattern",
+      "prompt": "{file:.opencode/agents/test-writer.md}",
+      "temperature": 0.2
+    },
+    "refactor-agent": {
+      "description": "Extract code from handlers.mjs into helpers.mjs to reduce S3776 complexity",
+      "prompt": "{file:.opencode/agents/refactor-agent.md}",
+      "temperature": 0.2
+    }
   }
 }
