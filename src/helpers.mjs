@@ -206,19 +206,25 @@ export const autoBuild = (dir, langCfg) => {
  * @param {string} dir — project root
  * @returns {number|null} — Java version (e.g. 21), or null
  */
+const RE_SC_GRADLE = /sourceCompatibility\s*=\s*['"]?(\d+)/;
+const RE_SC_GRADLE2 = /JavaVersion\.VERSION_(\d+)/;
+const RE_SC_GRADLE3 = /java\s*\{[^}]*sourceCompatibility\s*=\s*(\d+)/s;
+const RE_SC_POM_JV = /<java\.version>(\d+)<\/java\.version>/;
+const RE_SC_POM_MC = /<maven\.compiler\.(source|release)>(\d+)<\/maven\.compiler\./;
+
 export const detectJavaVersion = (dir) => {
   const gradle = join(dir, 'build.gradle');
   if (existsSync(gradle)) {
     const text = readFileSync(gradle, 'utf8');
-    const m = text.match(/sourceCompatibility\s*=\s*['"]?(\d+)/) || text.match(/JavaVersion\.VERSION_(\d+)/);
+    let m = RE_SC_GRADLE.exec(text) || RE_SC_GRADLE2.exec(text);
     if (m) return Number.parseInt(m[1], 10);
-    const m2 = text.match(/java\s*\{[^}]*sourceCompatibility\s*=\s*(\d+)/s);
+    const m2 = RE_SC_GRADLE3.exec(text);
     if (m2) return Number.parseInt(m2[1], 10);
   }
   const pom = join(dir, 'pom.xml');
   if (existsSync(pom)) {
     const text = readFileSync(pom, 'utf8');
-    const m = text.match(/<java\.version>(\d+)<\/java\.version>/) || text.match(/<maven\.compiler\.(source|release)>(\d+)<\/maven\.compiler\./);
+    const m = RE_SC_POM_JV.exec(text) || RE_SC_POM_MC.exec(text);
     if (m) return Number.parseInt(m[1] || m[2], 10);
   }
   return null;
@@ -248,9 +254,17 @@ export const detectMultiModule = (dir) => {
  * @param {string} dir — project root
  * @returns {string|null}
  */
+let gitPath = '';
+const resolveGit = () => {
+  if (gitPath) return gitPath;
+  try { gitPath = execSync('command -v git', { encoding: 'utf8', timeout: 3000 }).trim(); }
+  catch { gitPath = '/usr/bin/git'; }
+  return gitPath;
+};
+
 export const detectGitBranch = (dir) => {
   try {
-    const branch = execSync('git rev-parse --abbrev-ref HEAD', { cwd: dir, encoding: 'utf8', timeout: 5000 }).trim();
+    const branch = execSync(`${resolveGit()} rev-parse --abbrev-ref HEAD`, { cwd: dir, encoding: 'utf8', timeout: 5000 }).trim();
     return branch || null;
   } catch { return null; }
 };
