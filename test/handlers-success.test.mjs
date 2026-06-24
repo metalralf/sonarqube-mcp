@@ -647,7 +647,7 @@ describe('handler success paths', () => {
       () => jsonOk({ total: 2, facets: [{ property: 'severities', values: [{ val: 'MAJOR', count: 2 }] }, { property: 'types', values: [{ val: 'CODE_SMELL', count: 2 }] }] }),
       () => jsonOk({ hotspots: [{ key: 'h1' }], paging: { total: 1, pageSize: 500 } }),
       () => jsonOk({ branches: [{ name: 'main', isMain: true, analysisDate: '2024-01-01', status: { qualityGateStatus: 'OK' } }] }),
-      () => jsonOk({ measures: [] }),
+      () => jsonOk({ measures: [{ component: 'testproj:src/Foo.ts', metric: 'coverage', value: '45.0' }, { component: 'testproj:src/Bar.ts', metric: 'coverage', value: '30.0' }] }),
     ]);
     const res = await h('sonar_project_report')({ projectKey: 'testproj' });
     assert.equal(res.qualityGate, 'OK');

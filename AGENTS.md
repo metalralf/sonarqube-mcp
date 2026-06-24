@@ -1,5 +1,32 @@
 # AGENTS.md — SonarQube MCP Server
 
+## ⚠️ CRITICAL RULES — READ BEFORE ANY WORK
+
+**I WILL FORGET THESE. YOU MUST ENFORCE THEM.**
+
+### Every handler → must have a test
+- **Inline fetch-mock test** in the same pass as the handler (no exceptions)
+- **Integration test** (at least one success + one error path)
+
+### Every commit → must pass these FIRST
+```bash
+npm run typecheck        # mandatory — NO EXCEPTIONS
+npm test                 # mandatory — NO EXCEPTIONS
+npm run coverage:check   # mandatory — src/ thresholds: 100% lines, 100% funcs, 85% branches
+```
+
+### Every new language scan → must update LANG_CONFIGS
+`src/helpers.mjs` — sources, tests, exclusions, binaries, coverageProperty
+
+### Never do these
+- Commit `.env`, `sonar-project.properties`, or tokens
+- Tag releases (maintainer does this)
+- Anonymous async functions in handlers (S3776)
+- Function name `t` (i18n conflict)
+- Write a handler without a success-path test
+
+---
+
 ## Stack
 
 - **Runtime**: Node.js 18+ (ESM, `"type": "module"`)
@@ -30,10 +57,6 @@ test/
   api.test.mjs / api-error.test.mjs / config.test.mjs / helpers.test.mjs
 ```
 
-## Agents
-
-Agent definitions for commit/push, version management, changelog generation, test writing, refactoring, coverage analysis, and deep research live alongside the project. If you have access to tools/agents for similar tasks, delegate specialized tasks to them instead of doing everything in the main thread.
-
 ## Commands
 
 ```bash
@@ -42,6 +65,14 @@ npm run coverage          # run with c8 coverage
 npm run coverage:check    # enforce thresholds: 100% lines, 100% functions, 85% branches on src/
 npm run typecheck         # tsc --noEmit JSDoc type check
 ```
+
+## Pre-commit checklist (run this BEFORE committing)
+
+```
+typecheck → test → coverage:check
+```
+
+Every push must be green on all three. If coverage drops, fix it before pushing.
 
 ## Conventions
 
@@ -63,7 +94,7 @@ tool('sonar_tool_name', 'Short description.', {
 
 ### Testing — success paths with fetch mock
 
-Every handler calls `sonarGet`/`sonarPost` which call `fetch()`. Mock `globalThis.fetch` to test the handler logic without infrastructure:
+Every handler calls `sonarGet`/`sonarPost` which call `fetch()`. Mock `globalThis.fetch`:
 
 ```js
 const mockFetch = (responses) => {
@@ -151,15 +182,3 @@ All configurable — see full table in README. Key ones:
 4. Run `sonar-scanner -Dsonar.token=...` for dogfood analysis
 5. Check quality gate via `sonar_quality_gate` tool
 6. Bump version in `package.json` + `src/index.mjs` + `CHANGELOG.md` + update `#version` in `README.md`
-
-## Rules (no exceptions)
-
-- NEVER commit `.env`, `sonar-project.properties`, or files with tokens
-- NEVER tag releases — the maintainer does this manually
-- NEVER use anonymous async functions in tool handlers (rejected by SonarQube S3776)
-- NEVER use `t` as a function name (conflicts with i18n conventions)
-- NEVER leave a handler without a success-path test — write the fetch mock alongside the handler in the same pass
-- ALWAYS add JSDoc `@param` / `@returns` for all exported functions
-- ALWAYS add integration tests for new tools (at least one success + one error path)
-- ALWAYS add mock-based unit tests for new tool handlers (every handler branches)
-- ALWAYS update `LANG_CONFIGS` in helpers.mjs when adding scan support for a new language (sources, tests, coverage, exclusions, binaries, coverageProperty)

@@ -383,6 +383,12 @@ describe('helpers — detectJavaVersion', () => {
     assert.equal(detectJavaVersion(tmpDir), 21);
   });
 
+  it('detects java version from gradle java block syntax', async () => {
+    const { detectJavaVersion } = await import('../src/helpers.mjs');
+    write('build.gradle', 'java {\n    sourceCompatibility = 21\n}');
+    assert.equal(detectJavaVersion(tmpDir), 21);
+  });
+
   it('detects java version from pom.xml java.version', async () => {
     const { detectJavaVersion } = await import('../src/helpers.mjs');
     write('pom.xml', '<properties><java.version>17</java.version></properties>');

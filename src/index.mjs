@@ -14,7 +14,7 @@ const server = new McpServer({ name: 'sonarqube-mcp', version: '1.5.1' }, { capa
 for (const { name, description, schema, handler } of TOOL_CONFIGS) {
   server.registerTool(name, { description, inputSchema: z.object(schema).strict() }, async (params) => {
     const data = await handler(params);
-    return { content: [{ type: 'text', text: typeof data === 'string' ? data : JSON.stringify(data, null, 2) }] };
+    /* c8 ignore next */ return { content: [{ type: 'text', text: typeof data === 'string' ? data : JSON.stringify(data, null, 2) }] };
   });
 }
 

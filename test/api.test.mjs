@@ -134,6 +134,13 @@ describe('api', () => {
     globalThis.fetch = origFetch;
   });
 
+  it('sonarGet throws without token', async () => {
+    const prev = process.env.SONARQUBE_TOKEN;
+    delete process.env.SONARQUBE_TOKEN;
+    await assert.rejects(() => mod.sonarGet('/api/test'), /SONARQUBE_TOKEN is not set/);
+    process.env.SONARQUBE_TOKEN = prev;
+  });
+
   it('sonarPost throws without token', async () => {
     const prev = process.env.SONARQUBE_TOKEN;
     delete process.env.SONARQUBE_TOKEN;

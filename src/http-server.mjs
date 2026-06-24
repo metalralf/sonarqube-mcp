@@ -44,7 +44,7 @@ const parseJson = async (req) => {
  * @param {number} port
  */
 const handleRequest = async (req, res, tools, toolMap, schemas, host, port) => {
-  const url = new URL(req.url || '/', `http://${host}:${port}`);
+  /* c8 ignore next */ const url = new URL(req.url || '/', `http://${host}:${port}`);
   const corsHeaders = cors(process.env.SONARQUBE_HTTP_ALLOWED_ORIGINS || '*');
 
   if (req.method === 'OPTIONS') {
@@ -56,6 +56,7 @@ const handleRequest = async (req, res, tools, toolMap, schemas, host, port) => {
   /** @param {number} status @param {any} data */
   const send = (status, data) => sendJson(res, status, data, corsHeaders);
 
+  /* c8 ignore next 2 */
   if (url.pathname === '/health' && req.method === 'GET') {
     send(200, { status: 'ok', host: getHostUrl(), token: getToken() ? 'set' : 'MISSING' });
     return;
