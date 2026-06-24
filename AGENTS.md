@@ -41,13 +41,13 @@ npm run coverage:check   # mandatory — src/ thresholds: 100% lines, 100% funcs
 ```
 src/
   index.mjs          — entry point, MCP server setup
-  handlers.mjs       — all 34 tool definitions
+  handlers.mjs       — all 39 tool definitions
   helpers.mjs        — tool() builder, schemas, filtering, language detection, Docker helpers
   api.mjs            — HTTP client (sonarGet, sonarPost, auth)
   http-server.mjs    — optional HTTP transport
   config.mjs         — constants
 test/
-  tools.test.mjs     — validates all 34 tools exist
+  tools.test.mjs     — validates all 39 tools exist
   handlers.test.mjs  — unit tests for handler error + scanner paths
   handlers-success.test.mjs — 70+ handler success paths via fetch mock
   integration.test.mjs — live SonarQube API integration tests

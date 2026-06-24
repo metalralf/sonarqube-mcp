@@ -42,6 +42,7 @@
    ```
    git tag vX.Y.Z
    git push origin vX.Y.Z
+   git push origin release/vX.Y.Z
    ```
 
 7. **Create GitHub Release** using the tag

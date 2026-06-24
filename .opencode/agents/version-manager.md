@@ -29,8 +29,9 @@ Files to update:
 **IMPORTANT: Verify today's date before writing.** Run `date +%F` and use that date in the changelog. Do not guess or reuse a date from a previous entry.
 
 Pre-commit gate (run these after bump):
-1. `npm run typecheck` — must pass
-2. `node --test test/tools.test.mjs` — must pass (verifies 39 tools)
+1. `npm run typecheck`
+2. `npm test`
+3. `npm run coverage:check`
 
 Check the current version from `git tag -l | sort -V | tail -1` first.
 Never tag releases yourself — the maintainer does this manually.
