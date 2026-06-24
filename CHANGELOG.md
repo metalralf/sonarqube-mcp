@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.5.1 (2026-06-24)
+
+- Fix S6594: use RegExp.exec() instead of String.match() in detectJavaVersion
+- Fix S4036: resolve git path via command -v git for detectGitBranch
+- Review security hotspot: S4036 on git command resolved as SAFE
+
 ## 1.5.0 (2026-06-24)
 
 - **4 composite tools**: `sonar_project_report`, `sonar_analyze_and_report`, `sonar_file_issues`, `sonar_new_issues_since` — saves 6+ API calls into 1
