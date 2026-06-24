@@ -3,13 +3,7 @@ description: Stage, commit with conventional message, and push to remote
 mode: subagent
 permission:
   bash:
-    "*": ask
-    "git add *": allow
-    "git commit *": allow
-    "git push": ask
-    "git log *": allow
-    "git diff": allow
-    "git status": allow
+    "git *": allow
 ---
 
 You are a git workflow agent. Stage files, commit with a conventional commit message, and push.
