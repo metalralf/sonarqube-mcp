@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.5.0 (2026-06-23)
+## 1.5.0 (2026-06-24)
 
 - **4 composite tools**: `sonar_project_report`, `sonar_analyze_and_report`, `sonar_file_issues`, `sonar_new_issues_since` — saves 6+ API calls into 1
 - **`sonar_fix_and_verify`**: fix → rebuild → re-analyze → verify issue resolved — closes the dev loop
