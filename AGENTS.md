@@ -167,18 +167,31 @@ All configurable — see full table in README. Key ones:
 
 ## Branch workflow
 
-- `main` — stable releases, tagged (`1.x.x`)
-- `feature/*` — new tools/features, branch from `main`
-- Version bumps:
-  - **patch**: 1-2 small tools or fixes (e.g. `1.4.0` → `1.4.1`)
-  - **minor**: 3+ new tools or significant features (e.g. `1.3.6` → `1.4.0`)
-  - **major**: breaking changes (e.g. `1.4.0` → `2.0.0`)
+- `main` — **unstable development** (can be broken). All work lands here.
+- `release/vX.Y.Z` — stabilization branches. Cut from main when ready to ship. Run full release checklist, then tag.
+- Tags (`v1.x.x`) — the only source of truth for end users. Never install from main.
 
-## Agent workflow
+## Release workflow
 
-1. Run `npm run typecheck` before committing
-2. Run `npm test` to verify nothing breaks
-3. Run `npm run coverage:check` to enforce src/ thresholds (100% lines, 100% functions, 85% branches)
-4. Run `sonar-scanner -Dsonar.token=...` for dogfood analysis
-5. Check quality gate via `sonar_quality_gate` tool
-6. Bump version in `package.json` + `src/index.mjs` + `CHANGELOG.md` + update `#version` in `README.md`
+When the maintainer decides to ship:
+
+1. **Cut `release/vX.Y.Z`** from main
+2. **Run gate**: `typecheck → test → coverage:check`
+3. **Update CHANGELOG.md** with all changes since last tag
+4. **Bump version** in `package.json`, `src/index.mjs`, `README.md`
+5. **Commit** as `chore: bump to vX.Y.Z`
+6. **Tag and push**: `git tag vX.Y.Z && git push origin vX.Y.Z`
+7. **Create GitHub Release** — maintainer does this
+8. **Merge release branch back** to main if any fixes were made
+
+See `RELEASE.md` for the full step-by-step.
+
+## Agent workflow (daily development)
+
+1. Work directly on `main` — no branch ceremony needed
+2. Run `npm run typecheck` before committing
+3. Run `npm test` to verify nothing breaks
+4. Run `npm run coverage:check` to enforce src/ thresholds (100% lines, 100% functions, 85% branches)
+5. Run `sonar-scanner -Dsonar.token=...` for dogfood analysis
+6. Check quality gate via `sonar_quality_gate` tool
+7. **Never tag or push a version bump on main** — that only happens on release branches
