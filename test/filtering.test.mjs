@@ -17,12 +17,13 @@ const freshConfigs = async (env) => {
 };
 
 describe('toolset filtering', () => {
-  it('exposes all 34 tools by default', async () => {
+  it('exposes all tools by default', async () => {
     const configs = await freshConfigs({});
     const names = configs.map((t) => t.name);
     assert.ok(names.includes('sonar_issues'));
     assert.ok(names.includes('sonar_hotspots'));
     assert.ok(names.includes('sonar_run_analysis'));
+    assert.ok(names.includes('sonar_call_multiple'));
   });
 
   it('read-only mode excludes write tools', async () => {
@@ -33,6 +34,7 @@ describe('toolset filtering', () => {
     assert.ok(!names.includes('sonar_change_hotspot_status'), 'write tools excluded');
     assert.ok(!names.includes('sonar_run_analysis'), 'write tools excluded');
     assert.ok(!names.includes('sonar_setup_scanner'), 'write tools excluded');
+    assert.ok(!names.includes('sonar_call_multiple'), 'meta tool excluded in read-only mode');
   });
 
   it('toolset filtering limits to requested categories', async () => {

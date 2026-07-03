@@ -607,6 +607,50 @@ const ALL_TOOLS = [
     const report = await ALL_TOOLS.find((t) => t.name === 'sonar_project_report').handler({ projectKey: pk });
     return { config, scan, report };
   }),
+
+  tool('sonar_call_multiple', 'Batch-execute multiple SonarQube tools in linear order in a single round-trip. Pass an ordered list of { name, args } entries; returns { total, duplicates, truncated, results: [{ order, name, ok, result|error }] }. Consecutive exact duplicates are collapsed (non-adjacent repeats are kept — state may change between them). Capped at 25 calls. Cannot call itself recursively.', {
+    calls: z.array(z.object({
+      name: z.string().describe('Tool name (e.g. sonar_ping, sonar_measures)'),
+      args: z.record(z.string(), z.any()).optional().describe('Arguments object for the tool (omit for no-arg tools)'),
+    })).describe('Ordered list of tool calls to execute sequentially'),
+    stopOnError: z.boolean().optional().describe('Stop after the first failing call (default false — collect all results)'),
+  }, async ({ calls, stopOnError }) => {
+    const MAX_CALLS = 25;
+    const stop = stopOnError === true;
+    const truncated = calls.length > MAX_CALLS;
+    const input = truncated ? calls.slice(0, MAX_CALLS) : calls;
+    const results = [];
+    let duplicates = 0;
+    let prevSig = '';
+    for (let i = 0; i < input.length; i++) {
+      const c = input[i];
+      const name = c.name;
+      const args = c.args || {};
+      const sig = name + '|' + JSON.stringify(args);
+      if (sig === prevSig) { duplicates++; continue; }
+      prevSig = sig;
+      const order = i + 1;
+      if (name === 'sonar_call_multiple') {
+        results.push({ order, name, ok: false, error: 'Recursive sonar_call_multiple is not allowed' });
+        if (stop) break;
+        continue;
+      }
+      const t = ALL_TOOLS.find((x) => x.name === name);
+      if (!t) {
+        results.push({ order, name, ok: false, error: `Unknown tool: ${name}` });
+        if (stop) break;
+        continue;
+      }
+      try {
+        const result = await t.handler(args);
+        results.push({ order, name, ok: true, result });
+      } catch (e) {
+        results.push({ order, name, ok: false, error: /** @type {Error} */ (e).message });
+        if (stop) break;
+      }
+    }
+    return { total: results.length, duplicates, truncated, maxCalls: MAX_CALLS, results };
+  }),
 ];
 
 /** @type {Array<{ name: string; description: string; schema: Record<string, import('zod').ZodTypeAny>; handler: Function }>} */

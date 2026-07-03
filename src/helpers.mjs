@@ -690,11 +690,11 @@ export const TOOL_CATEGORIES = {
   admin: ['sonar_list_webhooks', 'sonar_list_languages', 'sonar_ping', 'sonar_setup_scanner', 'sonar_run_analysis', 'sonar_fix_and_verify', 'sonar_detect_project_config'],
   rules: ['sonar_rule'],
   raw: ['sonar_raw'],
-  composite: ['sonar_project_report', 'sonar_analyze_and_report', 'sonar_file_issues', 'sonar_new_issues_since', 'sonar_fix_and_verify', 'sonar_detect_project_config', 'sonar_file_review', 'sonar_scan_workflow'],
+  composite: ['sonar_project_report', 'sonar_analyze_and_report', 'sonar_file_issues', 'sonar_new_issues_since', 'sonar_fix_and_verify', 'sonar_detect_project_config', 'sonar_file_review', 'sonar_scan_workflow', 'sonar_call_multiple'],
 };
 
 /** @type {Set<string>} */
-export const READ_ONLY_TOOLS = new Set(['sonar_set_issue_status', 'sonar_change_hotspot_status', 'sonar_run_analysis', 'sonar_setup_scanner']);
+export const READ_ONLY_TOOLS = new Set(['sonar_set_issue_status', 'sonar_change_hotspot_status', 'sonar_run_analysis', 'sonar_setup_scanner', 'sonar_call_multiple']);
 
 /**
  * @param {ToolConfig[]} all

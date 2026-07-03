@@ -15,6 +15,7 @@ describe('tools', () => {
     'sonar_file_review',
     'sonar_fix_and_verify',
     'sonar_change_hotspot_status',
+    'sonar_call_multiple',
     'sonar_hotspot_details',
     'sonar_hotspots',
     'sonar_issues',
