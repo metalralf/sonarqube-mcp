@@ -3,7 +3,7 @@ import { execSync } from 'node:child_process';
 import { existsSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { z } from 'zod';
-import { tool, projectKey, componentKey, maxResults, encode, requireKey, componentParams, measureSearch, parseIssueFacets, getHostUrl, filterTools, sonarGet, sonarPost, sonarCheckServer, orgQuery, resolveProjectKey, maybeTruncated, detectLanguage, buildSonarProps, hasDocker, getScannerTimeout, getSourceContext, LANG_CONFIGS, autoBuild, runDockerScanner, runLocalScanner, mapScannerError, buildScannerHints, extractCeTaskUrl } from './helpers.mjs';
+import { tool, projectKey, componentKey, maxResults, encode, requireKey, componentParams, measureSearch, parseIssueFacets, getHostUrl, filterTools, sonarGet, sonarPost, sonarCheckServer, orgQuery, resolveProjectKey, maybeTruncated, detectLanguage, buildSonarProps, hasDocker, getScannerTimeout, getSourceContext, LANG_CONFIGS, autoBuild, mapScannerError, buildScannerHints, extractCeTaskUrl, pollCeTask, buildScannerArgs, runScanner } from './helpers.mjs';
 
 const ALL_TOOLS = [
   tool('sonar_projects_create', 'Create a new project in SonarQube. Requires admin permissions.', {
@@ -326,9 +326,10 @@ const ALL_TOOLS = [
     projectKey: z.string().optional().describe('Override project key'),
     host: z.string().optional().describe('SonarQube URL'),
     sources: z.string().optional().describe('Source dirs'),
+    tests: z.string().optional().describe('Test dirs (optional — omitted by default, pass empty string to disable)'),
     language: z.enum(['python', 'javascript', 'typescript', 'java', 'kotlin', 'go', 'csharp']).optional().describe('Project language — auto-detected if omitted'),
     scanner: z.enum(['auto', 'docker', 'local']).optional().describe('Scanner method: auto (default — Docker first, fallback to npm/PATH sonar-scanner), docker, or local'),
-  }, async ({ cwd, token, projectKey, host, sources, language, scanner: scannerMethod }) => {
+  }, async ({ cwd, token, projectKey, host, sources, tests, language, scanner: scannerMethod }) => {
     const dir = cwd || process.cwd();
     const auth = token || process.env.SONARQUBE_TOKEN || '';
     if (!auth) throw new Error('No token provided.');
@@ -337,33 +338,35 @@ const ALL_TOOLS = [
     if (scannerMethod === 'docker' && !useDocker) throw new Error('Docker scanner requested but Docker is not available.');
     const hostUrl = host || process.env.SONARQUBE_URL || 'http://localhost:9000';
     const langCfg = lang && LANG_CONFIGS[lang];
-    const src = sources || langCfg?.sources || 'src';
     const propsPath = join(dir, 'sonar-project.properties');
 
+    const sonarSources = sources || langCfg?.sources || 'src';
+    const sonarTests = tests;
+
     if (!existsSync(propsPath)) {
-      writeFileSync(propsPath, buildSonarProps(projectKey || process.env.SONARQUBE_PROJECT || 'my_project', hostUrl, src, lang, dir));
+      writeFileSync(propsPath, buildSonarProps(projectKey || process.env.SONARQUBE_PROJECT || 'my_project', hostUrl, sonarSources, lang, dir));
     }
 
     const buildResult = autoBuild(dir, langCfg);
+    const baseArgs = buildScannerArgs({ auth, projectKey, sonarSources, sonarTests });
+    const scannerType = useDocker ? 'docker' : 'local';
 
-    let output, scannerType;
-    const baseArgs = [];
-    if (auth) baseArgs.push(`-Dsonar.token=${auth}`);
-    if (projectKey) baseArgs.push(`-Dsonar.projectKey=${projectKey}`);
-
-    try {
-      if (useDocker) { scannerType = 'docker'; output = runDockerScanner(dir, baseArgs); }
-      else { scannerType = 'local'; output = runLocalScanner(dir, baseArgs); }
-    } catch (e) {
+    let output;
+    try { output = runScanner(dir, useDocker, baseArgs); }
+    catch (e) {
       const msg = /** @type {Error} */ (e).message;
       const mapped = mapScannerError(msg);
       if (mapped) throw new Error(mapped);
-      throw e;
-    /* c8 ignore next */ }
+      /* c8 ignore start */
+      return { success: false, scanner: scannerType, error: 'Scanner command failed', output: msg };
+    }
+    /* c8 ignore end */
 
     /* c8 ignore start */
     const hints = buildScannerHints(output, lang);
     const ceTaskUrl = extractCeTaskUrl(output, hostUrl);
+    let ceStatus;
+    try { const ce = await pollCeTask(ceTaskUrl); ceStatus = ce?.task?.status; } catch {}
     /* c8 ignore end */
 
     const pk = projectKey || process.env.SONARQUBE_PROJECT || 'my_project';
@@ -374,6 +377,7 @@ const ALL_TOOLS = [
       language: lang || 'unknown',
       dashboardUrl: `${hostUrl}/dashboard?id=${encodeURIComponent(pk)}`,
       ceTaskUrl,
+      ceStatus,
       buildPerformed: buildResult.performed,
       hints: hints.length ? hints : undefined,
       output,
@@ -465,12 +469,14 @@ const ALL_TOOLS = [
     projectKey,
     host: z.string().optional().describe('SonarQube URL'),
     sources: z.string().optional().describe('Source dirs'),
+    tests: z.string().optional().describe('Test dirs (optional)'),
     language: z.enum(['python', 'javascript', 'typescript', 'java', 'kotlin', 'go', 'csharp']).optional().describe('Project language'),
-  }, async ({ cwd, token, projectKey: pk, host, sources, language }) => {
+  }, async ({ cwd, token, projectKey: pk, host, sources, tests, language }) => {
     /* c8 ignore next 3 */
-    const scanResult = await ALL_TOOLS.find((t) => t.name === 'sonar_run_analysis').handler({ cwd, token, projectKey: pk, host, sources, language });
+    const scanResult = await ALL_TOOLS.find((t) => t.name === 'sonar_run_analysis').handler({ cwd, token, projectKey: pk, host, sources, tests, language });
+    if (!scanResult.success) { return { scan: scanResult, report: null }; }
     const report = await ALL_TOOLS.find((t) => t.name === 'sonar_project_report').handler({ projectKey: pk });
-    return { scan: { success: scanResult.success, scanner: scanResult.scanner, language: scanResult.language, dashboardUrl: scanResult.dashboardUrl, ceTaskUrl: scanResult.ceTaskUrl, hints: scanResult.hints }, report };
+    return { scan: { success: scanResult.success, scanner: scanResult.scanner, language: scanResult.language, dashboardUrl: scanResult.dashboardUrl, ceTaskUrl: scanResult.ceTaskUrl, ceStatus: scanResult.ceStatus, hints: scanResult.hints }, report };
   }),
 
   tool('sonar_file_issues', 'Get issues + source context for a file — saves 2 calls into 1.', {

@@ -111,7 +111,7 @@ export const buildSonarProps = (projectKey, hostUrl, sources, lang, dir) => {
   /* c8 ignore next */ const src = sources || cfg?.sources || 'src';
   let props = `sonar.host.url=${hostUrl}\nsonar.projectKey=${projectKey}\nsonar.sources=${src}\n`;
   if (cfg) {
-    props += `sonar.exclusions=${cfg.exclusions}\nsonar.tests=${cfg.tests}\n`;
+    props += `sonar.exclusions=${cfg.exclusions}\n`;
     if (cfg.coverageProperty) props += `${cfg.coverageProperty}=${cfg.coverage}\n`;
     if (cfg.binaries) props += `sonar.java.binaries=${cfg.binaries}\n`;
   }
@@ -148,7 +148,7 @@ export const hasDocker = () => {
  * Get Docker image for scanner.
  * @returns {string} — override with SONARQUBE_DOCKER_IMAGE
  */
-export const getDockerImage = () => process.env.SONARQUBE_DOCKER_IMAGE || 'sonarsource/sonar-scanner-cli';
+export const getDockerImage = () => process.env.SONARQUBE_DOCKER_IMAGE || 'sonarsource/sonar-scanner-cli:11.1';
 
 /**
  * Get Docker run flags.
@@ -307,6 +307,54 @@ export const extractCeTaskUrl = (output, hostUrl) => {
   const re = /api\/ce\/task\?id=([a-f0-9-]+)/;
   const m = re.exec(output);
   return m ? `${hostUrl}/api/ce/task?id=${m[1]}` : undefined;
+};
+
+/**
+ * Build scanner CLI arguments from user params.
+ * @param {{ auth: string, projectKey?: string, sonarSources: string, sonarTests?: string }} opts
+ * @returns {string[]}
+ */
+export const buildScannerArgs = ({ auth, projectKey, sonarSources, sonarTests }) => {
+  const args = [];
+  if (auth) args.push(`-Dsonar.token=${auth}`);
+  if (projectKey) args.push(`-Dsonar.projectKey=${projectKey}`);
+  args.push(`-Dsonar.sources=${sonarSources}`);
+  if (sonarTests !== undefined) args.push(`-Dsonar.tests=${sonarTests}`);
+  return args;
+};
+
+/**
+ * Run scanner (Docker or local) and return output.
+ * @param {string} dir
+ * @param {boolean} useDocker
+ * @param {string[]} baseArgs
+ * @returns {string}
+ */
+export const runScanner = (dir, useDocker, baseArgs) => {
+  if (useDocker) return runDockerScanner(dir, baseArgs);
+  return runLocalScanner(dir, baseArgs);
+};
+
+/**
+ * Poll a SonarQube CE task until completion.
+ * @param {string|undefined} ceTaskUrl
+ * @param {number} [timeout] - max poll time in ms (default 60000)
+ * @param {number} [interval] - poll interval in ms (default 2000)
+ * @returns {Promise<{ task: { status: string } }|null>}
+ */
+export const pollCeTask = async (ceTaskUrl, timeout = 60000, interval = 2000) => {
+  if (!ceTaskUrl) return null;
+  const url = new URL(ceTaskUrl);
+  const path = url.pathname + url.search;
+  const deadline = Date.now() + timeout;
+  while (Date.now() < deadline) {
+    const data = await sonarGet(path);
+    const status = data.task?.status;
+    if (status === 'SUCCESS') return data;
+    if (status === 'FAILED' || status === 'CANCELED') throw new Error(`CE task ${status.toLowerCase()}: ${data.task?.errorMessage || 'Unknown error'}`);
+    await new Promise((r) => setTimeout(r, interval));
+  }
+  throw new Error('CE task polling timed out after 60s');
 };
 
 /**

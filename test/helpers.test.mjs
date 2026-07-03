@@ -355,6 +355,85 @@ describe('helpers — scanner utilities', () => {
     const { extractCeTaskUrl } = await import('../src/helpers.mjs');
     assert.equal(extractCeTaskUrl('ANALYSIS SUCCESSFUL', 'http://sq:9000'), undefined);
   });
+
+  it('getDockerImage defaults to pinned version', async () => {
+    const { getDockerImage } = await import('../src/helpers.mjs');
+    const prev = process.env.SONARQUBE_DOCKER_IMAGE;
+    delete process.env.SONARQUBE_DOCKER_IMAGE;
+    assert.equal(getDockerImage(), 'sonarsource/sonar-scanner-cli:11.1');
+    process.env.SONARQUBE_DOCKER_IMAGE = prev;
+  });
+
+  it('getDockerImage respects env override', async () => {
+    const { getDockerImage } = await import('../src/helpers.mjs');
+    const prev = process.env.SONARQUBE_DOCKER_IMAGE;
+    process.env.SONARQUBE_DOCKER_IMAGE = 'custom/image:1.0';
+    assert.equal(getDockerImage(), 'custom/image:1.0');
+    process.env.SONARQUBE_DOCKER_IMAGE = prev;
+  });
+});
+
+describe('helpers — pollCeTask', () => {
+  let origFetch, origUrl, origToken;
+
+  before(() => {
+    origUrl = process.env.SONARQUBE_URL;
+    origToken = process.env.SONARQUBE_TOKEN;
+    process.env.SONARQUBE_URL = 'http://sq:9000';
+    process.env.SONARQUBE_TOKEN = 'squ_testtoken';
+  });
+
+  after(() => {
+    process.env.SONARQUBE_URL = origUrl;
+    process.env.SONARQUBE_TOKEN = origToken;
+    if (origFetch) globalThis.fetch = origFetch;
+  });
+
+  const mockFetch = (responses) => {
+    let idx = 0;
+    origFetch = globalThis.fetch;
+    globalThis.fetch = async (url, opts) => {
+      if (idx < responses.length) return responses[idx++](url, opts);
+      return { ok: true, status: 200, text: async () => '{}', json: async () => ({}) };
+    };
+  };
+
+  const jsonOk = (data) => ({
+    ok: true, status: 200, text: async () => JSON.stringify(data),
+    json: async () => data,
+  });
+
+  it('returns null when no URL', async () => {
+    const { pollCeTask } = await import('../src/helpers.mjs');
+    const result = await pollCeTask(undefined);
+    assert.equal(result, null);
+  });
+
+  it('polls until SUCCESS', async () => {
+    const { pollCeTask } = await import('../src/helpers.mjs');
+    mockFetch([
+      () => jsonOk({ task: { status: 'PENDING' } }),
+      () => jsonOk({ task: { status: 'IN_PROGRESS' } }),
+      () => jsonOk({ task: { status: 'SUCCESS' } }),
+    ]);
+    const result = await pollCeTask('http://sq:9000/api/ce/task?id=abc', 30000, 10);
+    assert.equal(result.task.status, 'SUCCESS');
+    globalThis.fetch = origFetch;
+  });
+
+  it('throws on FAILED status', async () => {
+    const { pollCeTask } = await import('../src/helpers.mjs');
+    mockFetch([() => jsonOk({ task: { status: 'FAILED', errorMessage: 'Build failed' } })]);
+    await assert.rejects(() => pollCeTask('http://sq:9000/api/ce/task?id=abc', 5000), /failed/);
+    globalThis.fetch = origFetch;
+  });
+
+  it('throws on CANCELED status', async () => {
+    const { pollCeTask } = await import('../src/helpers.mjs');
+    mockFetch([() => jsonOk({ task: { status: 'CANCELED' } })]);
+    await assert.rejects(() => pollCeTask('http://sq:9000/api/ce/task?id=abc', 5000), /canceled/);
+    globalThis.fetch = origFetch;
+  });
 });
 
 describe('helpers — detectJavaVersion', () => {
