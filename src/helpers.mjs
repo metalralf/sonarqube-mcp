@@ -1,6 +1,6 @@
 // @ts-check
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, extname } from 'node:path';
 import { execSync } from 'node:child_process';
 import { z } from 'zod';
 import { sonarGet, resolveProjectKey } from './api.mjs';
@@ -368,6 +368,227 @@ export const mapScannerError = (msg) => {
   return undefined;
 };
 
+/** @type {Record<string, string>} file extension -> SonarQube language key */
+export const EXT_LANGUAGE_MAP = {
+  '.ts': 'ts', '.tsx': 'ts',
+  '.js': 'js', '.jsx': 'js', '.mjs': 'js', '.cjs': 'js',
+  '.py': 'py',
+  '.java': 'java',
+  '.cs': 'cs',
+  '.go': 'go',
+  '.rb': 'ruby',
+  '.kt': 'kotlin', '.kts': 'kotlin',
+  '.scala': 'scala',
+  '.php': 'php',
+  '.rs': 'rust',
+  '.swift': 'swift',
+  '.css': 'css', '.scss': 'css', '.less': 'css', '.sass': 'css',
+  '.html': 'web', '.htm': 'web',
+  '.xml': 'xml', '.xsd': 'xml', '.xsl': 'xml',
+  '.yaml': 'yaml', '.yml': 'yaml',
+  '.tf': 'terraform',
+  '.json': 'json',
+  '.sh': 'shell',
+  '.sql': 'sql',
+};
+
+/** @type {Record<string, string>} SonarQube language key -> display name */
+export const LANGUAGE_NAMES = {
+  ts: 'TypeScript', js: 'JavaScript', py: 'Python', java: 'Java', cs: 'C#',
+  go: 'Go', ruby: 'Ruby', kotlin: 'Kotlin', scala: 'Scala', php: 'PHP',
+  rust: 'Rust', swift: 'Swift', css: 'CSS', web: 'HTML', xml: 'XML',
+  yaml: 'YAML', terraform: 'Terraform', json: 'JSON', shell: 'Shell',
+  sql: 'SQL', docker: 'Docker',
+};
+
+/** @type {Set<string>} directories to skip when walking for source files */
+const SKIP_DIRS = new Set(['node_modules', '.git', 'dist', 'build', 'target', 'venv', '.venv', '__pycache__', '.next', 'coverage', 'obj', 'bin', '.idea', '.vscode']);
+
+/**
+ * Walk a source directory and inventory detected SonarQube language keys.
+ * @param {string} dir — project root
+ * @param {string} [sources] - sources path relative to dir (default 'src')
+ * @returns {string[]} — sorted unique language keys
+ */
+export const detectSourceLanguages = (dir, sources = 'src') => {
+  const root = sources === '.' ? dir : join(dir, sources);
+  if (!existsSync(root)) return [];
+  const langs = new Set();
+  const walk = (d, depth) => {
+    if (depth > 8) return;
+    let entries;
+    try { entries = readdirSync(d, { withFileTypes: true }); } catch { return; }
+    for (const e of entries) {
+      if (e.isDirectory()) { if (!SKIP_DIRS.has(e.name)) walk(join(d, e.name), depth + 1); }
+      else {
+        if (e.name === 'Dockerfile' || e.name.startsWith('Dockerfile.')) langs.add('docker');
+        const ext = extname(e.name).toLowerCase();
+        const k = EXT_LANGUAGE_MAP[ext];
+        if (k) langs.add(k);
+      }
+    }
+  };
+  walk(root, 0);
+  return [...langs].sort();
+};
+
+/** @type {string[]} candidate test directory names in priority order */
+const TEST_DIR_CANDIDATES = ['test', 'tests', 'spec', '__tests__', 'e2e', 'integration-test'];
+
+/**
+ * Find the first existing test directory.
+ * @param {string} dir — project root
+ * @returns {string} — directory name, or '' if none found
+ */
+export const detectTestsDir = (dir) => TEST_DIR_CANDIDATES.find((d) => existsSync(join(dir, d))) || '';
+
+/**
+ * Read and parse .gitignore into a list of patterns (comments and negations removed).
+ * @param {string} dir — project root
+ * @returns {string[]}
+ */
+export const parseGitignore = (dir) => {
+  const path = join(dir, '.gitignore');
+  if (!existsSync(path)) return [];
+  try {
+    const text = readFileSync(path, 'utf8');
+    return text.split(/\r?\n/).map((l) => l.trim()).filter((l) => l && !l.startsWith('#') && !l.startsWith('!'));
+  } /* c8 ignore next */ catch { return []; }
+};
+
+/** @type {string[]} known build-artifact / generated patterns always excluded */
+const ARTIFACT_PATTERNS = ['node_modules/**', 'dist/**', 'build/**', 'target/**', 'venv/**', '.venv/**', '__pycache__/**', '.next/**', 'coverage/**', 'obj/**', 'bin/**', '*.g.cs', '*.generated.*'];
+
+/**
+ * Build a comma-separated exclusions list from .gitignore dir patterns merged with known artifacts.
+ * @param {string} dir — project root
+ * @returns {string}
+ */
+export const detectExclusions = (dir) => {
+  const gi = parseGitignore(dir);
+  const giPatterns = gi.map((p) => (p.endsWith('/') ? `${p}**` : p));
+  const merged = [...new Set([...giPatterns, ...ARTIFACT_PATTERNS])];
+  return merged.join(',');
+};
+
+/** @type {{ file: string, property: string }[]} well-known coverage report locations */
+const COVERAGE_FILES = [
+  { file: 'coverage/lcov.info', property: 'sonar.javascript.lcov.reportPaths' },
+  { file: 'coverage.xml', property: 'sonar.python.coverage.reportPaths' },
+  { file: 'target/site/jacoco/jacoco.xml', property: 'sonar.coverage.jacoco.xmlReportPaths' },
+  { file: 'coverage.cobertura.xml', property: 'sonar.coverage.cobertura.reportPaths' },
+];
+
+/**
+ * Detect a coverage report file and its SonarQube property.
+ * @param {string} dir — project root
+ * @returns {{ reportPaths: string, property: string } | null}
+ */
+export const detectCoverageReport = (dir) => {
+  const found = COVERAGE_FILES.find((c) => existsSync(join(dir, c.file)));
+  if (!found) return null;
+  return { reportPaths: found.file, property: found.property };
+};
+
+/** @type {{ file: string, buildTool: string, scanner: string }[]} build-tool detection rules */
+const BUILD_TOOLS = [
+  { file: 'pnpm-lock.yaml', buildTool: 'pnpm', scanner: 'sonar-scanner-cli' },
+  { file: 'package-lock.json', buildTool: 'npm', scanner: 'sonar-scanner-cli' },
+  { file: 'yarn.lock', buildTool: 'yarn', scanner: 'sonar-scanner-cli' },
+  { file: 'pom.xml', buildTool: 'Maven', scanner: 'sonar-scanner-maven' },
+  { file: 'build.gradle', buildTool: 'Gradle', scanner: 'sonar-scanner-gradle' },
+  { file: 'build.gradle.kts', buildTool: 'Gradle', scanner: 'sonar-scanner-gradle' },
+  { file: 'requirements.txt', buildTool: 'pip', scanner: 'sonar-scanner-cli' },
+  { file: 'pyproject.toml', buildTool: 'pdm', scanner: 'sonar-scanner-cli' },
+  { file: 'go.mod', buildTool: 'Go modules', scanner: 'sonar-scanner-cli' },
+  { file: 'Cargo.toml', buildTool: 'Cargo', scanner: 'sonar-scanner-cli' },
+];
+
+/**
+ * Detect build tool and suggested scanner from well-known manifest files.
+ * Handles .sln (any filename) as a special case.
+ * @param {string} dir — project root
+ * @returns {{ buildTool: string, scanner: string } | null}
+ */
+export const detectBuildTool = (dir) => {
+  const found = BUILD_TOOLS.find((b) => existsSync(join(dir, b.file)));
+  if (found) return { buildTool: found.buildTool, scanner: found.scanner };
+  try {
+    const sln = readdirSync(dir).find((f) => f.endsWith('.sln'));
+    if (sln) return { buildTool: '.NET / MSBuild', scanner: 'sonar-scanner-dotnet' };
+  } /* c8 ignore next */ catch {}
+  return null;
+};
+
+/** @type {string[]} SonarQube config files that indicate an existing analysis configuration */
+const SONAR_CONFIG_FILES = ['sonar-project.properties', '.sonarcloud.properties', 'sonar-project.xml'];
+
+/**
+ * Check whether the project already has a SonarQube analysis configuration.
+ * @param {string} dir — project root
+ * @returns {boolean}
+ */
+export const hasExistingSonarConfig = (dir) => SONAR_CONFIG_FILES.some((f) => existsSync(join(dir, f)));
+
+/**
+ * Detect the sources directory: 'src' if it exists and contains files, otherwise '.'.
+ * @param {string} dir — project root
+ * @returns {string}
+ */
+export const detectSourcesDir = (dir) => {
+  const src = join(dir, 'src');
+  if (!existsSync(src)) return '.';
+  try { if (readdirSync(src, { withFileTypes: true }).length === 0) return '.'; }
+  /* c8 ignore next */ catch { return '.'; }
+  return 'src';
+};
+
+/**
+ * Project introspection result.
+ * @typedef {Object} ProjectConfig
+ * @property {string} projectBaseDir
+ * @property {string} sources
+ * @property {string} tests
+ * @property {string} exclusions
+ * @property {string} sourceEncoding
+ * @property {string[]} detectedLanguages
+ * @property {string} coverageReportPaths
+ * @property {string} [coverageProperty]
+ * @property {string} buildTool
+ * @property {string} suggestedScanner
+ * @property {boolean} hasExistingConfig
+ */
+
+/**
+ * Inspect a project directory and return a suggested SonarQube analysis configuration.
+ * Pure filesystem inspection — does not call the SonarQube API.
+ * @param {string} dir — project root
+ * @returns {ProjectConfig}
+ */
+export const detectProjectConfig = (dir) => {
+  const hasExistingConfig = hasExistingSonarConfig(dir);
+  const sources = detectSourcesDir(dir);
+  const tests = detectTestsDir(dir);
+  const exclusions = detectExclusions(dir);
+  const langKeys = detectSourceLanguages(dir, sources);
+  const detectedLanguages = langKeys.map((k) => LANGUAGE_NAMES[k] || k);
+  const cov = detectCoverageReport(dir);
+  const bt = detectBuildTool(dir);
+  return {
+    projectBaseDir: '.',
+    sources,
+    tests,
+    exclusions,
+    sourceEncoding: 'UTF-8',
+    detectedLanguages,
+    coverageReportPaths: cov ? cov.reportPaths : '',
+    coverageProperty: cov ? cov.property : undefined,
+    buildTool: bt ? bt.buildTool : '',
+    suggestedScanner: bt ? bt.scanner : 'sonar-scanner-cli',
+    hasExistingConfig,
+  };
+};
+
 /**
  * @param {string} v
  * @returns {string}
@@ -466,10 +687,10 @@ export const TOOL_CATEGORIES = {
   worst: ['sonar_worst_metrics'],
   scm: ['sonar_source', 'sonar_scm_info'],
   branches: ['sonar_list_branches', 'sonar_list_pull_requests'],
-  admin: ['sonar_list_webhooks', 'sonar_list_languages', 'sonar_ping', 'sonar_setup_scanner', 'sonar_run_analysis', 'sonar_fix_and_verify'],
+  admin: ['sonar_list_webhooks', 'sonar_list_languages', 'sonar_ping', 'sonar_setup_scanner', 'sonar_run_analysis', 'sonar_fix_and_verify', 'sonar_detect_project_config'],
   rules: ['sonar_rule'],
   raw: ['sonar_raw'],
-  composite: ['sonar_project_report', 'sonar_analyze_and_report', 'sonar_file_issues', 'sonar_new_issues_since', 'sonar_fix_and_verify'],
+  composite: ['sonar_project_report', 'sonar_analyze_and_report', 'sonar_file_issues', 'sonar_new_issues_since', 'sonar_fix_and_verify', 'sonar_detect_project_config', 'sonar_file_review', 'sonar_scan_workflow'],
 };
 
 /** @type {Set<string>} */

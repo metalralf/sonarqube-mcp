@@ -3,7 +3,7 @@ import { execSync } from 'node:child_process';
 import { existsSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { z } from 'zod';
-import { tool, projectKey, componentKey, maxResults, encode, requireKey, componentParams, measureSearch, parseIssueFacets, getHostUrl, filterTools, sonarGet, sonarPost, sonarCheckServer, orgQuery, resolveProjectKey, maybeTruncated, detectLanguage, buildSonarProps, hasDocker, getScannerTimeout, getSourceContext, LANG_CONFIGS, autoBuild, mapScannerError, buildScannerHints, extractCeTaskUrl, pollCeTask, buildScannerArgs, runScanner } from './helpers.mjs';
+import { tool, projectKey, componentKey, maxResults, encode, requireKey, componentParams, measureSearch, parseIssueFacets, getHostUrl, filterTools, sonarGet, sonarPost, sonarCheckServer, orgQuery, resolveProjectKey, maybeTruncated, detectLanguage, buildSonarProps, hasDocker, getScannerTimeout, getSourceContext, LANG_CONFIGS, autoBuild, mapScannerError, buildScannerHints, extractCeTaskUrl, pollCeTask, buildScannerArgs, runScanner, detectProjectConfig } from './helpers.mjs';
 
 const ALL_TOOLS = [
   tool('sonar_projects_create', 'Create a new project in SonarQube. Requires admin permissions.', {
@@ -320,6 +320,22 @@ const ALL_TOOLS = [
     return { installed: true, packageManager: cmd, output: execSync(`${cmd} ${args.join(' ')}`, { cwd: dir, encoding: 'utf8', timeout: getScannerTimeout() }) };
   }),
 
+  tool('sonar_detect_project_config', 'Inspect a project directory and return a suggested SonarQube analysis configuration (sources, tests, exclusions, coverage, build tool). Does not modify anything — review then pass to sonar_run_analysis.', {
+    projectRoot: z.string().optional().describe('Project root (defaults to cwd)'),
+  }, async ({ projectRoot }) => {
+    const dir = projectRoot || process.cwd();
+    if (!existsSync(dir)) throw new Error(`Project root does not exist: ${dir}`);
+    const cfg = detectProjectConfig(dir);
+    // Cross-reference detected languages against the connected SonarQube instance.
+    // Best-effort: if the API is unreachable, keep all detected languages.
+    try {
+      const data = await sonarGet('/api/languages/list');
+      const supported = new Set((data.languages || []).map((/** @type {{ name: string }} */ l) => l.name.toLowerCase()));
+      if (supported.size) cfg.detectedLanguages = cfg.detectedLanguages.filter((n) => supported.has(n.toLowerCase()));
+    } catch { /* keep detected languages as-is */ }
+    return cfg;
+  }),
+
   tool('sonar_run_analysis', 'Run sonar-scanner analysis (auto-detects language, prefers Docker, falls back to local sonar-scanner via npm/PATH).', {
     cwd: z.string().optional().describe('Project root'),
     token: z.string().optional().describe('Token'),
@@ -541,6 +557,55 @@ const ALL_TOOLS = [
     }
     return { fixVerified: resolved, scan, report, issueKey };
     /* c8 ignore end */
+  }),
+
+  tool('sonar_file_review', 'Review a single file in one call: issues + source context + coverage + duplications. Saves 3-4 calls into 1.', {
+    key: componentKey,
+    from: z.number().optional().describe('Starting line'),
+    to: z.number().optional().describe('Ending line'),
+    severities: z.union([z.string(), z.array(z.string())]).optional().describe('Filter issues by severity'),
+    types: z.union([z.string(), z.array(z.string())]).optional().describe('Filter issues by type'),
+  }, async ({ key, from, to, severities, types }) => {
+    requireKey(key);
+    const [issues, coverage, duplications] = await Promise.all([
+      ALL_TOOLS.find((t) => t.name === 'sonar_file_issues').handler({ key, from, to, severities, types }),
+      ALL_TOOLS.find((t) => t.name === 'sonar_file_coverage_details').handler({ key }),
+      ALL_TOOLS.find((t) => t.name === 'sonar_duplications').handler({ key }),
+    ]);
+    return {
+      key,
+      issuesTotal: issues.total,
+      issues: issues.issues,
+      source: issues.source,
+      coverage: coverage?.component?.measures || [],
+      duplications: duplications?.duplications || [],
+    };
+  }),
+
+  tool('sonar_scan_workflow', 'Full scan happy path: detect project config (sources/tests/exclusions) → run analysis → return project report. Explicit params override detected defaults.', {
+    cwd: z.string().optional().describe('Project root'),
+    token: z.string().optional().describe('Token'),
+    projectKey,
+    host: z.string().optional().describe('SonarQube URL'),
+    sources: z.string().optional().describe('Source dirs (overrides detected)'),
+    tests: z.string().optional().describe('Test dirs — pass empty string to disable (overrides detected)'),
+    language: z.enum(['python', 'javascript', 'typescript', 'java', 'kotlin', 'go', 'csharp']).optional().describe('Project language'),
+    scanner: z.enum(['auto', 'docker', 'local']).optional().describe('Scanner method'),
+  }, async ({ cwd, token, projectKey: pk, host, sources, tests, language, scanner: scannerMethod }) => {
+    const dir = cwd || process.cwd();
+    // 1. Detect config to fill sensible defaults.
+    let config = null;
+    try { config = await ALL_TOOLS.find((t) => t.name === 'sonar_detect_project_config').handler({ projectRoot: dir }); }
+    catch { /* detection failed — proceed with explicit params only */ }
+    const mergedSources = sources || config?.sources;
+    const mergedTests = tests !== undefined ? tests : config?.tests;
+    // 2. Run analysis with merged params.
+    /* c8 ignore next 4 */
+    const scan = await ALL_TOOLS.find((t) => t.name === 'sonar_run_analysis').handler({ cwd: dir, token, projectKey: pk, host, sources: mergedSources, tests: mergedTests, language, scanner: scannerMethod });
+    if (!scan.success) return { config, scan, report: null };
+    // 3. Pull the project report.
+    const report = await ALL_TOOLS.find((t) => t.name === 'sonar_project_report').handler({ projectKey: pk });
+    return { config, scan, report };
   }),
 ];
 
