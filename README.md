@@ -1,6 +1,6 @@
 # sonarqube-mcp
 
-An MCP server that exposes SonarQube data as AI agent tools. **39 tools** — the most comprehensive SonarQube MCP implementation available. Covers projects, issues, quality gates, hotspots, coverage, SCM, webhooks, metrics history, worst-metric ranking, and composite workflow tools.
+An MCP server that exposes SonarQube data as AI agent tools. **43 tools** — the most comprehensive SonarQube MCP implementation available. Covers projects, issues, quality gates, hotspots, coverage, SCM, webhooks, metrics history, worst-metric ranking, project introspection, and composite workflow tools.
 
 *Dogfooding: this project is checked via its own tools.*
 
@@ -8,8 +8,8 @@ An MCP server that exposes SonarQube data as AI agent tools. **39 tools** — th
 
 ## Quick start
 
-> Pin to a specific version: `["npx", "-y", "github:metalralf/sonarqube-mcp#1.5.1"]`  
-> Omit `#1.5.1` for the latest (unstable) development version.
+> Pin to a specific version: `["npx", "-y", "github:metalralf/sonarqube-mcp#1.6.0"]`  
+> Omit `#1.6.0` for the latest (unstable) development version.
 
 ### Minimum config (3 required env vars)
 
@@ -19,7 +19,7 @@ An MCP server that exposes SonarQube data as AI agent tools. **39 tools** — th
   "mcpServers": {
     "sonarqube": {
       "command": "npx",
-      "args": ["-y", "github:metalralf/sonarqube-mcp#1.5.1"],
+      "args": ["-y", "github:metalralf/sonarqube-mcp#1.6.0"],
       "env": {
         "SONARQUBE_URL": "http://localhost:9000",
         "SONARQUBE_TOKEN": "squ_...",
@@ -36,7 +36,7 @@ An MCP server that exposes SonarQube data as AI agent tools. **39 tools** — th
   "mcp": {
     "sonarqube": {
       "type": "local",
-      "command": ["npx", "-y", "github:metalralf/sonarqube-mcp#1.5.1"],
+      "command": ["npx", "-y", "github:metalralf/sonarqube-mcp#1.6.0"],
       "enabled": true,
       "environment": {
         "SONARQUBE_URL": "http://localhost:9000",
@@ -81,9 +81,9 @@ An MCP server that exposes SonarQube data as AI agent tools. **39 tools** — th
 }
 ```
 
-## Tools (39)
+## Tools (43)
 
-### Composite / Workflow (5 tools)
+### Composite / Workflow (8 tools)
 
 | Tool | Purpose |
 |---|---|
@@ -92,6 +92,9 @@ An MCP server that exposes SonarQube data as AI agent tools. **39 tools** — th
 | `sonar_file_issues` | File-level issues + source context |
 | `sonar_new_issues_since` | New issues since last analysis + project context |
 | `sonar_fix_and_verify` | Fix → rebuild → re-analyze → verify issue resolved |
+| `sonar_file_review` | One-call file review: issues + source + coverage + duplications |
+| `sonar_scan_workflow` | Detect config → run analysis → project report (full happy path) |
+| `sonar_call_multiple` | Batch-execute tools in linear order (capped at 25, consecutive-dedupe) |
 
 ### Discovery & Status (7 tools)
 
@@ -175,6 +178,7 @@ An MCP server that exposes SonarQube data as AI agent tools. **39 tools** — th
 |---|---|
 | `sonar_list_webhooks` | Verify CI/CD integration |
 | `sonar_list_languages` | All 27 supported languages |
+| `sonar_detect_project_config` | Inspect project dir → suggest sources/tests/exclusions/coverage/build-tool |
 | `sonar_setup_scanner` | Auto-install sonar-scanner (pnpm/yarn/npm) |
 | `sonar_run_analysis` | Full scan from the agent |
 
@@ -316,7 +320,7 @@ node src/index.mjs
 
 | Branch | Purpose | Version |
 |---|---|---|
-| `main` | Stable releases | Tagged (`1.5.1`) |
+| `main` | Stable releases | Tagged (`1.6.0`) |
 | `develop` | Daily development | `1.x.0-dev` |
 | `feature/*` | New tools/features | — |
 

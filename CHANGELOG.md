@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.6.0 (2026-07-06)
+
+- **`sonar_detect_project_config`**: inspect a project directory and return a suggested SonarQube analysis configuration (sources, tests, exclusions, coverage report, build tool, detected languages). Cross-references the connected server's `list_languages` API. 10 detection helpers added to `helpers.mjs` (gitignore parsing, extension→language map, coverage/build-tool detection).
+- **`sonar_file_review`**: one-call file review combining issues + source context + coverage + duplications (saves 3-4 calls).
+- **`sonar_scan_workflow`**: full scan happy path — detect config → run analysis → project report. Detected config fills defaults; explicit params override.
+- **`sonar_call_multiple`**: batch meta-tool — execute multiple tools in linear order in a single round-trip. Consecutive exact duplicates collapsed; non-adjacent repeats kept (state may change). Capped at 25 calls. Recursion guard. Added to `READ_ONLY_TOOLS`.
+- Scanner fixes (from 1.5.1 dev): `sonar.sources` always forwarded, hardcoded `sonar.tests=test` removed (now optional), scanner stderr surfaced on failure, CE task polling, Docker image pinned to `sonarsource/sonar-scanner-cli:11.1`.
+- **43 total tools** (was 39)
+
 ## 1.5.1 (2026-06-24)
 
 - Fix S6594: use RegExp.exec() instead of String.match() in detectJavaVersion
