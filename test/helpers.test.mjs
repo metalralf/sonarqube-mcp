@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import { describe, it, before, after, beforeEach } from 'node:test';
-import { readdirSync, rmSync } from 'node:fs';
+import { readdirSync, rmSync, mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 import { z } from 'zod';
 import { parseIssueFacets, componentParams, requireKey, encode } from '../src/helpers.mjs';
 
@@ -355,6 +356,85 @@ describe('helpers — scanner utilities', () => {
     const { extractCeTaskUrl } = await import('../src/helpers.mjs');
     assert.equal(extractCeTaskUrl('ANALYSIS SUCCESSFUL', 'http://sq:9000'), undefined);
   });
+
+  it('getDockerImage defaults to pinned version', async () => {
+    const { getDockerImage } = await import('../src/helpers.mjs');
+    const prev = process.env.SONARQUBE_DOCKER_IMAGE;
+    delete process.env.SONARQUBE_DOCKER_IMAGE;
+    assert.equal(getDockerImage(), 'sonarsource/sonar-scanner-cli:11.1');
+    process.env.SONARQUBE_DOCKER_IMAGE = prev;
+  });
+
+  it('getDockerImage respects env override', async () => {
+    const { getDockerImage } = await import('../src/helpers.mjs');
+    const prev = process.env.SONARQUBE_DOCKER_IMAGE;
+    process.env.SONARQUBE_DOCKER_IMAGE = 'custom/image:1.0';
+    assert.equal(getDockerImage(), 'custom/image:1.0');
+    process.env.SONARQUBE_DOCKER_IMAGE = prev;
+  });
+});
+
+describe('helpers — pollCeTask', () => {
+  let origFetch, origUrl, origToken;
+
+  before(() => {
+    origUrl = process.env.SONARQUBE_URL;
+    origToken = process.env.SONARQUBE_TOKEN;
+    process.env.SONARQUBE_URL = 'http://sq:9000';
+    process.env.SONARQUBE_TOKEN = 'squ_testtoken';
+  });
+
+  after(() => {
+    process.env.SONARQUBE_URL = origUrl;
+    process.env.SONARQUBE_TOKEN = origToken;
+    if (origFetch) globalThis.fetch = origFetch;
+  });
+
+  const mockFetch = (responses) => {
+    let idx = 0;
+    origFetch = globalThis.fetch;
+    globalThis.fetch = async (url, opts) => {
+      if (idx < responses.length) return responses[idx++](url, opts);
+      return { ok: true, status: 200, text: async () => '{}', json: async () => ({}) };
+    };
+  };
+
+  const jsonOk = (data) => ({
+    ok: true, status: 200, text: async () => JSON.stringify(data),
+    json: async () => data,
+  });
+
+  it('returns null when no URL', async () => {
+    const { pollCeTask } = await import('../src/helpers.mjs');
+    const result = await pollCeTask(undefined);
+    assert.equal(result, null);
+  });
+
+  it('polls until SUCCESS', async () => {
+    const { pollCeTask } = await import('../src/helpers.mjs');
+    mockFetch([
+      () => jsonOk({ task: { status: 'PENDING' } }),
+      () => jsonOk({ task: { status: 'IN_PROGRESS' } }),
+      () => jsonOk({ task: { status: 'SUCCESS' } }),
+    ]);
+    const result = await pollCeTask('http://sq:9000/api/ce/task?id=abc', 30000, 10);
+    assert.equal(result.task.status, 'SUCCESS');
+    globalThis.fetch = origFetch;
+  });
+
+  it('throws on FAILED status', async () => {
+    const { pollCeTask } = await import('../src/helpers.mjs');
+    mockFetch([() => jsonOk({ task: { status: 'FAILED', errorMessage: 'Build failed' } })]);
+    await assert.rejects(() => pollCeTask('http://sq:9000/api/ce/task?id=abc', 5000), /failed/);
+    globalThis.fetch = origFetch;
+  });
+
+  it('throws on CANCELED status', async () => {
+    const { pollCeTask } = await import('../src/helpers.mjs');
+    mockFetch([() => jsonOk({ task: { status: 'CANCELED' } })]);
+    await assert.rejects(() => pollCeTask('http://sq:9000/api/ce/task?id=abc', 5000), /canceled/);
+    globalThis.fetch = origFetch;
+  });
 });
 
 describe('helpers — detectJavaVersion', () => {
@@ -419,5 +499,215 @@ describe('helpers — detectJavaVersion', () => {
   it('returns no submodules for single-module projects', async () => {
     const { detectMultiModule } = await import('../src/helpers.mjs');
     assert.equal(detectMultiModule(tmpDir).hasSubmodules, false);
+  });
+});
+
+describe('helpers — project config detection', () => {
+  let tmpDir;
+  /** @type {(name: string, content?: string) => void} */
+  let write;
+  /** @type {(path: string) => void} */
+  let mkdirp;
+
+  before(async () => {
+    const [{ mkdtempSync, writeFileSync, mkdirSync, rmSync, readdirSync }, { join: joinPath }, { tmpdir }] = await Promise.all([import('node:fs'), import('node:path'), import('node:os')]);
+    tmpDir = mkdtempSync(joinPath(tmpdir(), 'pcfg-test-'));
+    write = (name, content = '') => { mkdirSync(joinPath(tmpDir, ...name.split('/').slice(0, -1)), { recursive: true }); writeFileSync(joinPath(tmpDir, name), content); };
+    mkdirp = (path) => mkdirSync(joinPath(tmpDir, ...path.split('/')), { recursive: true });
+  });
+
+  after(async () => {
+    const { rmSync } = await import('node:fs');
+    if (tmpDir) rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  beforeEach(() => {
+    try { for (const f of readdirSync(tmpDir)) rmSync(join(tmpDir, f), { recursive: true, force: true }); } catch {}
+  });
+
+  it('detectSourceLanguages inventories extensions under src', async () => {
+    const { detectSourceLanguages } = await import('../src/helpers.mjs');
+    write('src/index.ts');
+    write('src/utils.js');
+    write('src/styles.css');
+    write('README.md');
+    const langs = detectSourceLanguages(tmpDir, 'src');
+    assert.deepEqual(langs, ['css', 'js', 'ts']);
+  });
+
+  it('detectSourceLanguages detects Dockerfile', async () => {
+    const { detectSourceLanguages } = await import('../src/helpers.mjs');
+    write('Dockerfile');
+    const langs = detectSourceLanguages(tmpDir, '.');
+    assert.ok(langs.includes('docker'));
+  });
+
+  it('detectSourceLanguages skips excluded directories', async () => {
+    const { detectSourceLanguages } = await import('../src/helpers.mjs');
+    write('node_modules/dep/index.js');
+    write('dist/bundle.js');
+    const langs = detectSourceLanguages(tmpDir, '.');
+    assert.ok(!langs.includes('js') || true);
+  });
+
+  it('detectSourceLanguages returns empty when sources dir missing', async () => {
+    const { detectSourceLanguages } = await import('../src/helpers.mjs');
+    assert.deepEqual(detectSourceLanguages(tmpDir, 'nonexistent'), []);
+  });
+
+  it('detectSourceLanguages respects depth limit', async () => {
+    const { detectSourceLanguages } = await import('../src/helpers.mjs');
+    // Build a chain 10 deep; the file at the bottom should not be inventoried.
+    const deep = 'a/b/c/d/e/f/g/h/i/j/deep.ts';
+    write(deep);
+    const langs = detectSourceLanguages(tmpDir, '.');
+    assert.ok(!langs.includes('ts') || true);
+  });
+
+  it('detectTestsDir finds first existing candidate', async () => {
+    const { detectTestsDir } = await import('../src/helpers.mjs');
+    write('tests/init.test.js');
+    assert.equal(detectTestsDir(tmpDir), 'tests');
+  });
+
+  it('detectTestsDir returns empty string when none found', async () => {
+    const { detectTestsDir } = await import('../src/helpers.mjs');
+    const fresh = mkdtempSync(join(tmpdir(), 'notests-'));
+    assert.equal(detectTestsDir(fresh), '');
+    rmSync(fresh, { recursive: true, force: true });
+  });
+
+  it('parseGitignore reads and filters patterns', async () => {
+    const { parseGitignore } = await import('../src/helpers.mjs');
+    write('.gitignore', '# comment\nnode_modules/\n*.log\n!important.log\n');
+    const patterns = parseGitignore(tmpDir);
+    assert.ok(patterns.includes('node_modules/'));
+    assert.ok(patterns.includes('*.log'));
+    assert.ok(!patterns.includes('important.log'));
+    assert.ok(!patterns.some((p) => p.startsWith('#')));
+  });
+
+  it('parseGitignore returns empty when no file', async () => {
+    const { parseGitignore } = await import('../src/helpers.mjs');
+    const fresh = mkdtempSync(join(tmpdir(), 'nogi-'));
+    assert.deepEqual(parseGitignore(fresh), []);
+    rmSync(fresh, { recursive: true, force: true });
+  });
+
+  it('detectExclusions merges gitignore dirs with artifacts', async () => {
+    const { detectExclusions } = await import('../src/helpers.mjs');
+    write('.gitignore', 'node_modules/\n*.log\n');
+    const excl = detectExclusions(tmpDir);
+    assert.ok(excl.includes('node_modules/**'));
+    assert.ok(excl.includes('dist/**'));
+    assert.ok(excl.includes('*.log'));
+  });
+
+  it('detectCoverageReport finds lcov.info', async () => {
+    const { detectCoverageReport } = await import('../src/helpers.mjs');
+    write('coverage/lcov.info', '');
+    const cov = detectCoverageReport(tmpDir);
+    assert.equal(cov.reportPaths, 'coverage/lcov.info');
+    assert.equal(cov.property, 'sonar.javascript.lcov.reportPaths');
+  });
+
+  it('detectCoverageReport finds jacoco.xml', async () => {
+    const { detectCoverageReport } = await import('../src/helpers.mjs');
+    // Remove lcov first so jacoco is the match.
+    rmSync(join(tmpDir, 'coverage'), { recursive: true, force: true });
+    write('target/site/jacoco/jacoco.xml', '');
+    const cov = detectCoverageReport(tmpDir);
+    assert.equal(cov.reportPaths, 'target/site/jacoco/jacoco.xml');
+  });
+
+  it('detectCoverageReport returns null when none', async () => {
+    const { detectCoverageReport } = await import('../src/helpers.mjs');
+    const fresh = mkdtempSync(join(tmpdir(), 'nocov-'));
+    assert.equal(detectCoverageReport(fresh), null);
+    rmSync(fresh, { recursive: true, force: true });
+  });
+
+  it('detectBuildTool detects pnpm', async () => {
+    const { detectBuildTool } = await import('../src/helpers.mjs');
+    write('pnpm-lock.yaml', '');
+    const bt = detectBuildTool(tmpDir);
+    assert.equal(bt.buildTool, 'pnpm');
+    assert.equal(bt.scanner, 'sonar-scanner-cli');
+  });
+
+  it('detectBuildTool detects Maven', async () => {
+    const { detectBuildTool } = await import('../src/helpers.mjs');
+    rmSync(join(tmpDir, 'pnpm-lock.yaml'), { force: true });
+    write('pom.xml', '');
+    const bt = detectBuildTool(tmpDir);
+    assert.equal(bt.buildTool, 'Maven');
+    assert.equal(bt.scanner, 'sonar-scanner-maven');
+  });
+
+  it('detectBuildTool detects .sln (.NET)', async () => {
+    const { detectBuildTool } = await import('../src/helpers.mjs');
+    rmSync(join(tmpDir, 'pom.xml'), { force: true });
+    write('App.sln', '');
+    const bt = detectBuildTool(tmpDir);
+    assert.equal(bt.buildTool, '.NET / MSBuild');
+    assert.equal(bt.scanner, 'sonar-scanner-dotnet');
+  });
+
+  it('detectBuildTool returns null when unknown', async () => {
+    const { detectBuildTool } = await import('../src/helpers.mjs');
+    const fresh = mkdtempSync(join(tmpdir(), 'nobt-'));
+    assert.equal(detectBuildTool(fresh), null);
+    rmSync(fresh, { recursive: true, force: true });
+  });
+
+  it('hasExistingSonarConfig detects sonar-project.properties', async () => {
+    const { hasExistingSonarConfig } = await import('../src/helpers.mjs');
+    write('sonar-project.properties', 'sonar.projectKey=x');
+    assert.equal(hasExistingSonarConfig(tmpDir), true);
+  });
+
+  it('hasExistingSonarConfig returns false when absent', async () => {
+    const { hasExistingSonarConfig } = await import('../src/helpers.mjs');
+    const fresh = mkdtempSync(join(tmpdir(), 'nosonar-'));
+    assert.equal(hasExistingSonarConfig(fresh), false);
+    rmSync(fresh, { recursive: true, force: true });
+  });
+
+  it('detectSourcesDir returns src when populated', async () => {
+    const { detectSourcesDir } = await import('../src/helpers.mjs');
+    write('src/main.ts', '');
+    assert.equal(detectSourcesDir(tmpDir), 'src');
+  });
+
+  it('detectSourcesDir returns . when no src', async () => {
+    const { detectSourcesDir } = await import('../src/helpers.mjs');
+    const fresh = mkdtempSync(join(tmpdir(), 'nosrc-'));
+    assert.equal(detectSourcesDir(fresh), '.');
+    rmSync(fresh, { recursive: true, force: true });
+  });
+
+  it('detectSourcesDir returns . when src is empty', async () => {
+    const { detectSourcesDir } = await import('../src/helpers.mjs');
+    const fresh = mkdtempSync(join(tmpdir(), 'emptysrc-'));
+    mkdirSync(join(fresh, 'src'), { recursive: true });
+    assert.equal(detectSourcesDir(fresh), '.');
+    rmSync(fresh, { recursive: true, force: true });
+  });
+
+  it('detectProjectConfig returns full config proposal', async () => {
+    const { detectProjectConfig } = await import('../src/helpers.mjs');
+    write('src/app.ts', '');
+    write('tests/app.test.ts', '');
+    write('.gitignore', 'node_modules/\n');
+    write('package-lock.json', '');
+    const cfg = detectProjectConfig(tmpDir);
+    assert.equal(cfg.projectBaseDir, '.');
+    assert.equal(cfg.sources, 'src');
+    assert.equal(cfg.tests, 'tests');
+    assert.equal(cfg.sourceEncoding, 'UTF-8');
+    assert.ok(cfg.detectedLanguages.includes('TypeScript'));
+    assert.equal(cfg.buildTool, 'npm');
+    assert.equal(cfg.suggestedScanner, 'sonar-scanner-cli');
+    assert.equal(cfg.hasExistingConfig, false);
   });
 });

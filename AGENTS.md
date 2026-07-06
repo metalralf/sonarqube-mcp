@@ -41,15 +41,15 @@ npm run coverage:check   # mandatory — src/ thresholds: 100% lines, 100% funcs
 ```
 src/
   index.mjs          — entry point, MCP server setup
-  handlers.mjs       — all 39 tool definitions
-  helpers.mjs        — tool() builder, schemas, filtering, language detection, Docker helpers
+  handlers.mjs       — all 43 tool definitions
+  helpers.mjs        — tool() builder, schemas, filtering, language detection, project introspection, Docker/scanner helpers
   api.mjs            — HTTP client (sonarGet, sonarPost, auth)
   http-server.mjs    — optional HTTP transport
   config.mjs         — constants
 test/
-  tools.test.mjs     — validates all 39 tools exist
+  tools.test.mjs     — validates all 43 tools exist
   handlers.test.mjs  — unit tests for handler error + scanner paths
-  handlers-success.test.mjs — 70+ handler success paths via fetch mock
+  handlers-success.test.mjs — 90+ handler success paths via fetch mock
   integration.test.mjs — live SonarQube API integration tests
   filtering.test.mjs — toolset filtering + read-only mode
   http-server.test.mjs — HTTP transport tests
@@ -145,7 +145,38 @@ encode(v)                 — encodeURIComponent shorthand
 detectLanguage(dir)       — sniffs package.json/pom.xml/requirements.txt etc.
 buildSonarProps(key,host,sources,lang) — generates language-specific properties
 hasDocker()               — checks Docker availability (disable with env var)
+buildScannerArgs({auth,projectKey,sonarSources,sonarTests}) — builds sonar-scanner -D args
+runScanner(dir,useDocker,baseArgs)     — runs Docker or local scanner, returns output
+pollCeTask(ceTaskUrl,timeout,interval) — polls /api/ce/task until SUCCESS/FAILED/CANCELED
+mapScannerError(msg)      — maps scanner errors to actionable hints
+detectProjectConfig(dir)  — filesystem introspection → suggested analysis config
+detectSourceLanguages(dir,sources)     — walk src, inventory SonarQube language keys
+detectTestsDir(dir)       — first existing of test/tests/spec/__tests__/e2e/integration-test
+detectExclusions(dir)     — merges .gitignore patterns with known artifact dirs
+detectCoverageReport(dir) — finds lcov/jacoco/cobertura report + property
+detectBuildTool(dir)      — pnpm/npm/yarn/Maven/Gradle/pip/Go/Cargo/.sln
 ```
+
+### Composite / meta-tool patterns
+
+Composite tools call other handlers in-process via `ALL_TOOLS.find((t) => t.name === X).handler(args)`:
+- `sonar_analyze_and_report`, `sonar_scan_workflow`, `sonar_call_multiple` all compose this way.
+- Scanner-invoking composites (`analyze_and_report`, `scan_workflow`, `fix_and_verify`) wrap the execSync parts in `/* c8 ignore */` — the scanner can't be fetch-mocked, so the success path is untestable in unit tests. The detect/failure paths ARE tested.
+- `sonar_call_multiple` is a meta-tool: batch-execute tools in linear order, capped at 25, consecutive exact dupes collapsed, recursion guard. It uses `ALL_TOOLS` (unfiltered), so it's in `READ_ONLY_TOOLS` to stay hidden in read-only deployments.
+
+### READ_ONLY_TOOLS
+
+```js
+new Set(['sonar_set_issue_status', 'sonar_change_hotspot_status', 'sonar_run_analysis', 'sonar_setup_scanner', 'sonar_call_multiple'])
+```
+Tools excluded when `SONARQUBE_READ_ONLY=true`. `sonar_call_multiple` is included because it can invoke any write tool via `ALL_TOOLS`.
+
+### Scanner command construction (1.6.0 fixes)
+
+- `sonar.sources` is ALWAYS forwarded (via `buildScannerArgs`).
+- `sonar.tests` is optional — omitted by default, pass empty string to disable.
+- Scanner stderr is surfaced: on unmapped failure returns `{ success: false, output: msg }`; mapped errors still throw.
+- Docker image pinned to `sonarsource/sonar-scanner-cli:11.1` (override via `SONARQUBE_DOCKER_IMAGE`).
 
 ### API client (api.mjs)
 

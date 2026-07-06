@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict';
 import { describe, it, before, after } from 'node:test';
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 
 const BASE = 'http://sonar-test.local';
 
@@ -682,6 +685,215 @@ describe('handler success paths', () => {
     const res = await h('sonar_new_issues_since')({ projectKey: 'testproj' });
     assert.equal(res.total, 0);
     assert.ok(res.message);
+  });
+
+  it('sonar_detect_project_config returns config and filters languages by server', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'detect-'));
+    mkdirSync(join(dir, 'src'), { recursive: true });
+    writeFileSync(join(dir, 'src', 'app.ts'), '');
+    writeFileSync(join(dir, 'src', 'style.css'), '');
+    try {
+      const calls = mockFetch([() => jsonOk({ languages: [{ key: 'ts', name: 'TypeScript' }] })]);
+      const res = await h('sonar_detect_project_config')({ projectRoot: dir });
+      assert.equal(res.sources, 'src');
+      assert.equal(res.sourceEncoding, 'UTF-8');
+      assert.ok(res.detectedLanguages.includes('TypeScript'));
+      // CSS was detected but the server does not support it -> filtered out.
+      assert.ok(!res.detectedLanguages.includes('CSS'));
+      assert.equal(calls.length, 1);
+    } finally { rmSync(dir, { recursive: true, force: true }); }
+  });
+
+  it('sonar_detect_project_config keeps all languages when API unreachable', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'detect2-'));
+    mkdirSync(join(dir, 'src'), { recursive: true });
+    writeFileSync(join(dir, 'src', 'app.ts'), '');
+    writeFileSync(join(dir, 'src', 'style.css'), '');
+    try {
+      mockFetch([() => { throw new Error('network down'); }]);
+      const res = await h('sonar_detect_project_config')({ projectRoot: dir });
+      assert.ok(res.detectedLanguages.includes('TypeScript'));
+      assert.ok(res.detectedLanguages.includes('CSS'));
+    } finally { rmSync(dir, { recursive: true, force: true }); }
+  });
+
+  it('sonar_detect_project_config throws on missing project root', async () => {
+    mockFetch([]);
+    await assert.rejects(
+      () => h('sonar_detect_project_config')({ projectRoot: '/nonexistent/path/xyz' }),
+      /does not exist/,
+    );
+  });
+
+  it('sonar_file_review returns issues + coverage + duplications in one call', async () => {
+    const calls = mockFetch([
+      // issues/search (from sonar_file_issues)
+      () => jsonOk({ total: 2, issues: [{ key: 'i1', severity: 'MAJOR', line: 10 }, { key: 'i2', severity: 'MINOR', line: 20 }] }),
+      // sources/lines (from sonar_file_issues)
+      () => jsonOk({ sources: [{ line: 10, code: 'const x = 1;' }] }),
+      // measures/component (coverage)
+      () => jsonOk({ component: { measures: [{ metric: 'coverage', value: '75' }] } }),
+      // duplications/show
+      () => jsonOk({ duplications: [{ blocks: [{ from: 10, to: 15 }] }] }),
+    ]);
+    const res = await h('sonar_file_review')({ key: 'testproj:src/app.ts' });
+    assert.equal(res.issuesTotal, 2);
+    assert.equal(res.issues.length, 2);
+    assert.equal(res.source.length, 1);
+    assert.equal(res.coverage.length, 1);
+    assert.equal(res.coverage[0].metric, 'coverage');
+    assert.equal(res.duplications.length, 1);
+    assert.equal(calls.length, 4);
+  });
+
+  it('sonar_scan_workflow returns detected config + scan failure when scanner cannot run', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'wf-'));
+    mkdirSync(join(dir, 'src'), { recursive: true });
+    writeFileSync(join(dir, 'src', 'app.ts'), '');
+    const prevDocker = process.env.SONARQUBE_DISABLE_DOCKER;
+    process.env.SONARQUBE_DISABLE_DOCKER = 'true';
+    try {
+      // detect_project_config calls list_languages; run_analysis fails (no real scanner).
+      mockFetch([() => jsonOk({ languages: [{ key: 'ts', name: 'TypeScript' }] })]);
+      const res = await h('sonar_scan_workflow')({ cwd: dir, projectKey: 'testproj' });
+      assert.ok(res.config);
+      assert.equal(res.config.sources, 'src');
+      assert.equal(res.scan.success, false);
+      assert.equal(res.report, null);
+    } finally {
+      process.env.SONARQUBE_DISABLE_DOCKER = prevDocker;
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('sonar_call_multiple executes tools in linear order and returns results', async () => {
+    const calls = mockFetch([
+      () => jsonOk({ health: 'GREEN' }),
+      () => jsonOk({ projectStatus: { status: 'OK' } }),
+    ]);
+    const res = await h('sonar_call_multiple')({
+      calls: [
+        { name: 'sonar_ping', args: {} },
+        { name: 'sonar_quality_gate', args: { projectKey: 'testproj' } },
+      ],
+    });
+    assert.equal(res.total, 2);
+    assert.equal(res.duplicates, 0);
+    assert.equal(res.truncated, false);
+    assert.equal(res.maxCalls, 25);
+    assert.equal(res.results[0].order, 1);
+    assert.equal(res.results[0].name, 'sonar_ping');
+    assert.equal(res.results[0].ok, true);
+    assert.equal(res.results[0].result.health, 'GREEN');
+    assert.equal(res.results[1].order, 2);
+    assert.equal(res.results[1].name, 'sonar_quality_gate');
+    assert.equal(res.results[1].ok, true);
+    assert.equal(res.results[1].result.projectStatus.status, 'OK');
+    assert.equal(calls.length, 2);
+  });
+
+  it('sonar_call_multiple collects errors for unknown tools and continues', async () => {
+    const calls = mockFetch([() => jsonOk({ health: 'GREEN' })]);
+    const res = await h('sonar_call_multiple')({
+      calls: [
+        { name: 'sonar_ping', args: {} },
+        { name: 'sonar_does_not_exist', args: {} },
+      ],
+    });
+    assert.equal(res.total, 2);
+    assert.equal(res.results[0].order, 1);
+    assert.equal(res.results[0].ok, true);
+    assert.equal(res.results[1].order, 2);
+    assert.equal(res.results[1].ok, false);
+    assert.match(res.results[1].error, /Unknown tool/);
+    assert.equal(calls.length, 1);
+  });
+
+  it('sonar_call_multiple rejects recursive self-calls', async () => {
+    mockFetch([]);
+    const res = await h('sonar_call_multiple')({
+      calls: [{ name: 'sonar_call_multiple', args: { calls: [] } }],
+    });
+    assert.equal(res.total, 1);
+    assert.equal(res.results[0].order, 1);
+    assert.equal(res.results[0].ok, false);
+    assert.match(res.results[0].error, /Recursive/);
+  });
+
+  it('sonar_call_multiple stops on error when stopOnError is set', async () => {
+    const calls = mockFetch([() => jsonOk({ health: 'GREEN' })]);
+    const res = await h('sonar_call_multiple')({
+      calls: [
+        { name: 'sonar_ping', args: {} },
+        { name: 'sonar_missing', args: {} },
+        { name: 'sonar_ping', args: {} },
+      ],
+      stopOnError: true,
+    });
+    assert.equal(res.total, 2);
+    assert.equal(res.results[1].ok, false);
+    assert.equal(calls.length, 1);
+  });
+
+  it('sonar_call_multiple handles empty call list', async () => {
+    mockFetch([]);
+    const res = await h('sonar_call_multiple')({ calls: [] });
+    assert.equal(res.total, 0);
+    assert.equal(res.duplicates, 0);
+    assert.equal(res.truncated, false);
+    assert.deepEqual(res.results, []);
+  });
+
+  it('sonar_call_multiple collapses consecutive exact duplicates', async () => {
+    const calls = mockFetch([
+      () => jsonOk({ health: 'GREEN' }),
+      () => jsonOk({ projectStatus: { status: 'OK' } }),
+    ]);
+    const res = await h('sonar_call_multiple')({
+      calls: [
+        { name: 'sonar_ping', args: {} },
+        { name: 'sonar_ping', args: {} },
+        { name: 'sonar_quality_gate', args: { projectKey: 'testproj' } },
+      ],
+    });
+    assert.equal(res.duplicates, 1);
+    assert.equal(res.total, 2);
+    // order reflects original input index: ping=#1, quality_gate=#3 (gap shows where dupe dropped)
+    assert.equal(res.results[0].order, 1);
+    assert.equal(res.results[0].name, 'sonar_ping');
+    assert.equal(res.results[1].order, 3);
+    assert.equal(res.results[1].name, 'sonar_quality_gate');
+    assert.equal(calls.length, 2);
+  });
+
+  it('sonar_call_multiple keeps non-adjacent repeats (state may change between them)', async () => {
+    const calls = mockFetch([
+      () => jsonOk({ health: 'GREEN' }),
+      () => jsonOk({ projectStatus: { status: 'OK' } }),
+      () => jsonOk({ health: 'RED' }),
+    ]);
+    const res = await h('sonar_call_multiple')({
+      calls: [
+        { name: 'sonar_ping', args: {} },
+        { name: 'sonar_quality_gate', args: { projectKey: 'testproj' } },
+        { name: 'sonar_ping', args: {} },
+      ],
+    });
+    assert.equal(res.duplicates, 0);
+    assert.equal(res.total, 3);
+    assert.equal(res.results[2].order, 3);
+    assert.equal(res.results[2].result.health, 'RED');
+    assert.equal(calls.length, 3);
+  });
+
+  it('sonar_call_multiple caps at 25 calls and sets truncated flag', async () => {
+    mockFetch([]);
+    const many = Array.from({ length: 27 }, (_, i) => ({ name: `sonar_fake_${i}`, args: {} }));
+    const res = await h('sonar_call_multiple')({ calls: many });
+    assert.equal(res.truncated, true);
+    assert.equal(res.maxCalls, 25);
+    assert.equal(res.total, 25);
+    assert.equal(res.duplicates, 0);
   });
 
 });
