@@ -8,8 +8,8 @@ An MCP server that exposes SonarQube data as AI agent tools. **43 tools** — th
 
 ## Quick start
 
-> Pin to a specific version: `["npx", "-y", "github:metalralf/sonarqube-mcp#1.6.1"]`  
-> Omit `#1.6.1` for the latest (unstable) development version.
+> Pin to a specific version: `["npx", "-y", "github:metalralf/sonarqube-mcp#1.7.0"]`  
+> Omit `#1.7.0` for the latest (unstable) development version.
 
 ### Minimum config (3 required env vars)
 
@@ -19,7 +19,7 @@ An MCP server that exposes SonarQube data as AI agent tools. **43 tools** — th
   "mcpServers": {
     "sonarqube": {
       "command": "npx",
-      "args": ["-y", "github:metalralf/sonarqube-mcp#1.6.1"],
+      "args": ["-y", "github:metalralf/sonarqube-mcp#1.7.0"],
       "env": {
         "SONARQUBE_URL": "http://localhost:9000",
         "SONARQUBE_TOKEN": "squ_...",
@@ -36,7 +36,7 @@ An MCP server that exposes SonarQube data as AI agent tools. **43 tools** — th
   "mcp": {
     "sonarqube": {
       "type": "local",
-      "command": ["npx", "-y", "github:metalralf/sonarqube-mcp#1.6.1"],
+      "command": ["npx", "-y", "github:metalralf/sonarqube-mcp#1.7.0"],
       "enabled": true,
       "environment": {
         "SONARQUBE_URL": "http://localhost:9000",
@@ -381,7 +381,7 @@ node src/index.mjs
 
 | Branch | Purpose | Version |
 |---|---|---|
-| `main` | Stable releases | Tagged (`1.6.1`) |
+| `main` | Stable releases | Tagged (`1.7.0`) |
 | `develop` | Daily development | `1.x.0-dev` |
 | `feature/*` | New tools/features | — |
 
