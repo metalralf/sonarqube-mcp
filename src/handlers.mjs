@@ -3,7 +3,7 @@ import { execSync } from 'node:child_process';
 import { existsSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { z } from 'zod';
-import { tool, projectKey, componentKey, maxResults, encode, requireKey, componentParams, measureSearch, parseIssueFacets, getHostUrl, filterTools, sonarGet, sonarPost, sonarCheckServer, orgQuery, resolveProjectKey, maybeTruncated, detectLanguage, buildSonarProps, hasDocker, getScannerTimeout, getSourceContext, LANG_CONFIGS, autoBuild, mapScannerError, buildScannerHints, extractCeTaskUrl, pollCeTask, buildScannerArgs, runScanner, detectProjectConfig } from './helpers.mjs';
+import { tool, projectKey, componentKey, maxResults, branch, pullRequest, encode, requireKey, componentParams, addBranchParams, measureSearch, parseIssueFacets, getHostUrl, filterTools, sonarGet, sonarPost, sonarCheckServer, orgQuery, resolveProjectKey, maybeTruncated, detectLanguage, buildSonarProps, hasDocker, getScannerTimeout, getSourceContext, LANG_CONFIGS, autoBuild, mapScannerError, buildScannerHints, extractCeTaskUrl, pollCeTask, buildScannerArgs, runScanner, detectProjectConfig } from './helpers.mjs';
 
 /**
  * Execute a single tool call for sonar_call_multiple.
@@ -40,11 +40,15 @@ const ALL_TOOLS = [
 
   tool('sonar_project_details', 'Get detailed information about a project.', {
     projectKey,
-  }, async ({ projectKey: pk }) => {
+    branch,
+    pullRequest,
+  }, async ({ projectKey: pk, branch, pullRequest }) => {
     const key = resolveProjectKey({ projectKey: pk });
+    const compParams = addBranchParams(new URLSearchParams({ component: key }), { branch, pullRequest });
+    const analysisParams = addBranchParams(new URLSearchParams({ project: key, ps: '1' }), { branch, pullRequest });
     const [comp, analyses] = await Promise.all([
-      sonarGet(`/api/components/show?component=${encode(key)}`).catch(() => null),
-      sonarGet(`/api/project_analyses/search?project=${encode(key)}&ps=1`).catch(() => null),
+      sonarGet(`/api/components/show?${compParams.toString()}`).catch(() => null),
+      sonarGet(`/api/project_analyses/search?${analysisParams.toString()}`).catch(() => null),
     ]);
     return { key, name: comp?.component?.name || null, description: comp?.component?.description || null, qualifier: comp?.component?.qualifier || null, analysisDate: analyses?.analyses?.[0]?.date || null, projectUrl: `${getHostUrl()}/dashboard?id=${encode(key)}` };
   }),
@@ -52,20 +56,27 @@ const ALL_TOOLS = [
   tool('sonar_search_projects', 'Search/find SonarQube project keys.', {
     query: z.string().optional().describe('Optional search query to filter projects by name/key'),
     limit: maxResults,
-  }, async ({ query, limit }) => {
-    const params = new URLSearchParams({ ps: String(Math.min(Number(limit) || 50, 500)) });
+    branch,
+    pullRequest,
+  }, async ({ query, limit, branch, pullRequest }) => {
+    const params = addBranchParams(new URLSearchParams({ ps: String(Math.min(Number(limit) || 50, 500)) }), { branch, pullRequest });
     if (query) params.set('q', query);
     return maybeTruncated(await sonarGet(`/api/projects/search?${params.toString()}${orgQuery()}`));
   }),
 
   tool('sonar_summary', 'Get aggregated project health: QG, metrics, issues, branches.', {
     projectKey,
-  }, async ({ projectKey: pk }) => {
+    branch,
+    pullRequest,
+  }, async ({ projectKey: pk, branch, pullRequest }) => {
     const key = resolveProjectKey({ projectKey: pk });
+    const qgParams = addBranchParams(new URLSearchParams({ projectKey: key }), { branch, pullRequest });
+    const measuresParams = addBranchParams(new URLSearchParams({ component: key, metricKeys: 'bugs,vulnerabilities,code_smells,coverage,duplicated_lines_density,ncloc,reliability_rating,security_rating,sqale_rating' }), { branch, pullRequest });
+    const issuesParams = addBranchParams(new URLSearchParams({ componentKeys: key, ps: '1', resolved: 'false', facets: 'severities,types' }), { branch, pullRequest });
     const [quality, measures, issueData, branches] = await Promise.all([
-      sonarGet(`/api/qualitygates/project_status?projectKey=${encode(key)}`).catch(() => null),
-      sonarGet(`/api/measures/component?component=${encode(key)}&metricKeys=bugs,vulnerabilities,code_smells,coverage,duplicated_lines_density,ncloc,reliability_rating,security_rating,sqale_rating`).catch(() => null),
-      sonarGet(`/api/issues/search?componentKeys=${encode(key)}&ps=1&resolved=false&facets=severities,types`).catch(() => null),
+      sonarGet(`/api/qualitygates/project_status?${qgParams.toString()}`).catch(() => null),
+      sonarGet(`/api/measures/component?${measuresParams.toString()}`).catch(() => null),
+      sonarGet(`/api/issues/search?${issuesParams.toString()}`).catch(() => null),
       sonarGet(`/api/project_branches/list?project=${encode(key)}`).catch(() => null),
     ]);
     const metricMap = {};
@@ -82,13 +93,17 @@ const ALL_TOOLS = [
 
   tool('sonar_analysis_status', 'Check if a project has been analyzed.', {
     projectKey,
-  }, async ({ projectKey: pk }) => {
+    branch,
+    pullRequest,
+  }, async ({ projectKey: pk, branch, pullRequest }) => {
     const key = resolveProjectKey({ projectKey: pk });
     const health = await sonarCheckServer();
     if (!health.reachable) return { status: 'UNREACHABLE', message: `Cannot reach SonarQube at ${getHostUrl()}.`, hint: health.hint };
-    const proj = await sonarGet(`/api/projects/search?q=${encode(key)}&ps=1`).catch(() => null);
+    const projParams = addBranchParams(new URLSearchParams({ q: key, ps: '1' }), { branch, pullRequest });
+    const proj = await sonarGet(`/api/projects/search?${projParams.toString()}`).catch(() => null);
     if (!proj?.components?.length) return { status: 'NOT_FOUND', message: `Project "${key}" does not exist.` };
-    const analyses = await sonarGet(`/api/project_analyses/search?project=${encode(key)}&ps=1`).catch(() => null);
+    const analysisParams = addBranchParams(new URLSearchParams({ project: key, ps: '1' }), { branch, pullRequest });
+    const analyses = await sonarGet(`/api/project_analyses/search?${analysisParams.toString()}`).catch(() => null);
     if (!analyses?.analyses?.length) return { status: 'NOT_ANALYZED', message: `Project "${key}" exists but has no analysis data.` };
     const last = analyses.analyses[0];
     return { status: 'ANALYZED', lastAnalysis: last.date, projectUrl: `${getHostUrl()}/dashboard?id=${encode(key)}` };
@@ -114,18 +129,27 @@ const ALL_TOOLS = [
 
   tool('sonar_quality_gate', 'Get QG status with failing conditions.', {
     projectKey,
-  }, async ({ projectKey: pk }) => sonarGet(`/api/qualitygates/project_status?projectKey=${encode(resolveProjectKey({ projectKey: pk }))}`)),
+    branch,
+    pullRequest,
+  }, async ({ projectKey: pk, branch, pullRequest }) => {
+    const key = resolveProjectKey({ projectKey: pk });
+    const params = addBranchParams(new URLSearchParams({ projectKey: key }), { branch, pullRequest });
+    return sonarGet(`/api/qualitygates/project_status?${params.toString()}`);
+  }),
 
   tool('sonar_list_quality_gates', 'List all quality gates.', {
   }, async () => sonarGet('/api/qualitygates/list')),
 
   tool('sonar_measures', 'Get metrics: bugs, smells, coverage, ratings, ncloc, dup.', {
     projectKey,
+    branch,
+    pullRequest,
     metricKeys: z.string().optional().describe('Comma-separated metric keys'),
-  }, async ({ projectKey: pk, metricKeys }) => {
+  }, async ({ projectKey: pk, branch, pullRequest, metricKeys }) => {
     const key = resolveProjectKey({ projectKey: pk });
     const keys = metricKeys || 'bugs,vulnerabilities,code_smells,security_hotspots,coverage,duplicated_lines_density,ncloc,reliability_rating,security_rating,sqale_rating';
-    return sonarGet(`/api/measures/component?component=${encode(key)}&metricKeys=${encode(keys)}`);
+    const params = addBranchParams(new URLSearchParams({ component: key, metricKeys: keys }), { branch, pullRequest });
+    return sonarGet(`/api/measures/component?${params.toString()}`);
   }),
 
   tool('sonar_search_metrics', 'Browse available metric definitions.', {
@@ -139,24 +163,30 @@ const ALL_TOOLS = [
 
   tool('sonar_metrics_history', 'Get metric history over time (e.g. coverage trajectory).', {
     projectKey,
+    branch,
+    pullRequest,
     metric: z.string().describe('Metric key (use sonar_search_metrics to list)'),
     days: z.number().optional().describe('Days of history (default 30)'),
-  }, async ({ projectKey, metric, days }) => {
+  }, async ({ projectKey, branch, pullRequest, metric, days }) => {
     const key = resolveProjectKey({ projectKey });
     const d = Math.min(Math.max(Number(days) || 30, 1), 365);
     const from = new Date(Date.now() - d * 86400000).toISOString().split('T')[0];
-    return sonarGet(`/api/measures/search_history?component=${encode(key)}&metrics=${encode(metric)}&from=${from}`);
+    const params = addBranchParams(new URLSearchParams({ component: key, metrics: metric, from }), { branch, pullRequest });
+    return sonarGet(`/api/measures/search_history?${params.toString()}`);
   }),
 
   tool('sonar_worst_metrics', 'Find files with worst metric values.', {
     projectKey,
+    branch,
+    pullRequest,
     metrics: z.string().optional().describe('Comma-separated metric keys (default: coverage,duplicated_lines_density,cognitive_complexity)'),
     limit: z.number().optional().describe('Max results per metric (default 10, max 50)'),
-  }, async ({ projectKey, metrics, limit }) => {
+  }, async ({ projectKey, branch, pullRequest, metrics, limit }) => {
     const key = resolveProjectKey({ projectKey });
     const metricKeys = metrics || 'coverage,duplicated_lines_density,cognitive_complexity';
     const max = Math.min(Number(limit) || 10, 50);
-    const data = await sonarGet(`/api/measures/search?projectKeys=${encode(key)}&metricKeys=${encode(metricKeys)}&ps=500`);
+    const searchParams = addBranchParams(new URLSearchParams({ projectKeys: key, metricKeys, ps: '500' }), { branch, pullRequest });
+    const data = await sonarGet(`/api/measures/search?${searchParams.toString()}`);
     const grouped = {};
     for (const m of data.measures || []) {
       if (m.component === key) continue;
@@ -179,6 +209,8 @@ const ALL_TOOLS = [
 
   tool('sonar_issues', 'Search open issues sorted by severity.', {
     projectKey,
+    branch,
+    pullRequest,
     severities: z.union([z.string(), z.array(z.string())]).optional().describe('Comma-separated or array: INFO,MINOR,MAJOR,CRITICAL,BLOCKER'),
     types: z.union([z.string(), z.array(z.string())]).optional().describe('Comma-separated or array: CODE_SMELL,BUG,VULNERABILITY,SECURITY_HOTSPOT'),
     resolved: z.boolean().optional().describe('Include resolved issues'),
@@ -186,9 +218,9 @@ const ALL_TOOLS = [
     limit: maxResults,
     compact: z.boolean().optional().describe('Strip verbose fields for token efficiency'),
     include_source: z.boolean().optional().describe('Embed source lines for each issue'),
-  }, async ({ projectKey, severities, types, resolved, statuses, limit, compact, include_source }) => {
+  }, async ({ projectKey, branch, pullRequest, severities, types, resolved, statuses, limit, compact, include_source }) => {
     const key = resolveProjectKey({ projectKey });
-    const params = new URLSearchParams({ componentKeys: key, ps: String(Math.min(Number(limit) || 30, 500)), s: 'SEVERITY', asc: 'false' });
+    const params = addBranchParams(new URLSearchParams({ componentKeys: key, ps: String(Math.min(Number(limit) || 30, 500)), s: 'SEVERITY', asc: 'false' }), { branch, pullRequest });
     if (statuses) params.set('statuses', statuses);
     else if (!resolved) params.set('resolved', 'false');
     if (severities) params.set('severities', Array.isArray(severities) ? severities.join(',') : severities);
@@ -208,10 +240,13 @@ const ALL_TOOLS = [
 
   tool('sonar_issues_summary', 'Aggregated issue counts by severity and type.', {
     projectKey,
+    branch,
+    pullRequest,
     resolved: z.boolean().optional().describe('Include resolved issues'),
-  }, async ({ projectKey: pk, resolved }) => {
+  }, async ({ projectKey: pk, branch, pullRequest, resolved }) => {
     const key = resolveProjectKey({ projectKey: pk });
-    const data = await sonarGet(`/api/issues/search?componentKeys=${encode(key)}&ps=500&resolved=${String(Boolean(resolved))}`);
+    const params = addBranchParams(new URLSearchParams({ componentKeys: key, ps: '500', resolved: String(Boolean(resolved)) }), { branch, pullRequest });
+    const data = await sonarGet(`/api/issues/search?${params.toString()}`);
     const bySeverity = {};
     const byType = {};
     let effortTotal = 0;
@@ -225,16 +260,18 @@ const ALL_TOOLS = [
 
   tool('sonar_new_issues', 'Issues created since the last analysis.', {
     projectKey,
+    branch,
+    pullRequest,
     severities: z.union([z.string(), z.array(z.string())]).optional().describe('Comma-separated or array'),
     types: z.union([z.string(), z.array(z.string())]).optional().describe('Comma-separated or array'),
     limit: maxResults,
     compact: z.boolean().optional().describe('Strip verbose fields'),
-  }, async ({ projectKey: pk, severities, types, limit, compact }) => {
+  }, async ({ projectKey: pk, branch, pullRequest, severities, types, limit, compact }) => {
     const key = resolveProjectKey({ projectKey: pk });
     const analyses = await sonarGet(`/api/project_analyses/search?project=${encode(key)}&ps=2`).catch(() => null);
     const createdAfter = analyses?.analyses?.[1]?.date || analyses?.analyses?.[0]?.date;
     if (!createdAfter) return { total: 0, issues: [], message: 'No previous analysis found to compare against.' };
-    const params = new URLSearchParams({ componentKeys: key, ps: String(Math.min(Number(limit) || 30, 500)), s: 'SEVERITY', asc: 'false', createdAfter });
+    const params = addBranchParams(new URLSearchParams({ componentKeys: key, ps: String(Math.min(Number(limit) || 30, 500)), s: 'SEVERITY', asc: 'false', createdAfter }), { branch, pullRequest });
     if (severities) params.set('severities', Array.isArray(severities) ? severities.join(',') : severities);
     if (types) params.set('types', Array.isArray(types) ? types.join(',') : types);
     const data = await sonarGet(`/api/issues/search?${params.toString()}`);
@@ -261,13 +298,16 @@ const ALL_TOOLS = [
 
   tool('sonar_hotspots', 'Search security hotspots (needs squ_ token).', {
     projectKey,
+    branch,
+    pullRequest,
     status: z.string().optional().describe('TO_REVIEW or REVIEWED'),
     limit: z.number().optional().describe('Max results (default 30, max 500)'),
-  }, async ({ projectKey, status, limit }) => {
+  }, async ({ projectKey, branch, pullRequest, status, limit }) => {
     const token = process.env.SONARQUBE_TOKEN || '';
     if (token && !token.startsWith('squ_')) throw new Error('Hotspots require a User token (squ_ prefix). Current token starts with "' + token.slice(0, 4) + '...".');
     const key = resolveProjectKey({ projectKey });
-    return maybeTruncated(await sonarGet(`/api/hotspots/search?projectKey=${encode(key)}&status=${status || 'TO_REVIEW'}&ps=${String(Math.min(Number(limit) || 30, 500))}`));
+    const params = addBranchParams(new URLSearchParams({ projectKey: key, status: status || 'TO_REVIEW', ps: String(Math.min(Number(limit) || 30, 500)) }), { branch, pullRequest });
+    return maybeTruncated(await sonarGet(`/api/hotspots/search?${params.toString()}`));
   }),
 
   tool('sonar_hotspot_details', 'Full hotspot details: rule, code context, flows, comments.', {
@@ -450,11 +490,15 @@ const ALL_TOOLS = [
 
   tool('sonar_coverage_files', 'Find files with coverage below threshold.', {
     projectKey,
+    branch,
+    pullRequest,
     threshold: z.number().optional().describe('Coverage % threshold (default 80)'),
   }, measureSearch('coverage', 'coverage', 80, false)),
 
   tool('sonar_search_duplicated_files', 'Find files with duplication above threshold.', {
     projectKey,
+    branch,
+    pullRequest,
     threshold: z.number().optional().describe('Duplication % threshold (default 3)'),
   }, measureSearch('duplicated_lines_density', 'duplicatedLinesDensity', 3, true)),
 
@@ -469,15 +513,22 @@ const ALL_TOOLS = [
 
   tool('sonar_project_report', 'One-shot project health: QG + measures + issues summary + hotspots + worst files + branches.', {
     projectKey,
-  }, async ({ projectKey: pk }) => {
+    branch,
+    pullRequest,
+  }, async ({ projectKey: pk, branch, pullRequest }) => {
     const key = resolveProjectKey({ projectKey: pk });
+    const qgParams = addBranchParams(new URLSearchParams({ projectKey: key }), { branch, pullRequest });
+    const measuresParams = addBranchParams(new URLSearchParams({ component: key, metricKeys: 'bugs,vulnerabilities,code_smells,coverage,duplicated_lines_density,ncloc,reliability_rating,security_rating,sqale_rating' }), { branch, pullRequest });
+    const issuesParams = addBranchParams(new URLSearchParams({ componentKeys: key, ps: '1', resolved: 'false', facets: 'severities,types' }), { branch, pullRequest });
+    const hotspotsParams = addBranchParams(new URLSearchParams({ projectKey: key, ps: '1' }), { branch, pullRequest });
+    const worstParams = addBranchParams(new URLSearchParams({ projectKeys: key, metricKeys: 'coverage,duplicated_lines_density,cognitive_complexity', ps: '500' }), { branch, pullRequest });
     const [quality, measures, issueData, hotspots, branches, worst] = await Promise.all([
-      sonarGet(`/api/qualitygates/project_status?projectKey=${encode(key)}`).catch(() => null),
-      sonarGet(`/api/measures/component?component=${encode(key)}&metricKeys=bugs,vulnerabilities,code_smells,coverage,duplicated_lines_density,ncloc,reliability_rating,security_rating,sqale_rating`).catch(() => null),
-      sonarGet(`/api/issues/search?componentKeys=${encode(key)}&ps=1&resolved=false&facets=severities,types`).catch(() => null),
-      sonarGet(`/api/hotspots/search?projectKey=${encode(key)}&ps=1`).catch(() => ({ hotspots: [], paging: { total: 0 } })),
+      sonarGet(`/api/qualitygates/project_status?${qgParams.toString()}`).catch(() => null),
+      sonarGet(`/api/measures/component?${measuresParams.toString()}`).catch(() => null),
+      sonarGet(`/api/issues/search?${issuesParams.toString()}`).catch(() => null),
+      sonarGet(`/api/hotspots/search?${hotspotsParams.toString()}`).catch(() => null),
       sonarGet(`/api/project_branches/list?project=${encode(key)}`).catch(() => null),
-      sonarGet(`/api/measures/search?projectKeys=${encode(key)}&metricKeys=coverage,duplicated_lines_density,cognitive_complexity&ps=500`).catch(() => null),
+      sonarGet(`/api/measures/search?${worstParams.toString()}`).catch(() => null),
     ]);
     const metricMap = {};
     for (const m of measures?.component?.measures || []) metricMap[m.metric] = m.value;
@@ -539,16 +590,18 @@ const ALL_TOOLS = [
 
   tool('sonar_new_issues_since', 'New issues since last analysis + project context — saves 2+ calls into 1.', {
     projectKey,
+    branch,
+    pullRequest,
     severities: z.union([z.string(), z.array(z.string())]).optional().describe('Filter by severity'),
     types: z.union([z.string(), z.array(z.string())]).optional().describe('Filter by type'),
     limit: maxResults,
     compact: z.boolean().optional().describe('Strip verbose fields'),
-  }, async ({ projectKey: pk, severities, types, limit, compact }) => {
+  }, async ({ projectKey: pk, branch, pullRequest, severities, types, limit, compact }) => {
     const key = resolveProjectKey({ projectKey: pk });
     const analyses = await sonarGet(`/api/project_analyses/search?project=${encode(key)}&ps=2`).catch(() => null);
     const createdAfter = analyses?.analyses?.[1]?.date || analyses?.analyses?.[0]?.date;
     if (!createdAfter) return { total: 0, newIssues: [], message: 'No previous analysis found to compare against.', projectKey: key };
-    const params = new URLSearchParams({ componentKeys: key, ps: String(Math.min(Number(limit) || 30, 500)), s: 'SEVERITY', asc: 'false', createdAfter });
+    const params = addBranchParams(new URLSearchParams({ componentKeys: key, ps: String(Math.min(Number(limit) || 30, 500)), s: 'SEVERITY', asc: 'false', createdAfter }), { branch, pullRequest });
     if (severities) params.set('severities', Array.isArray(severities) ? severities.join(',') : severities);
     if (types) params.set('types', Array.isArray(types) ? types.join(',') : types);
     const data = await sonarGet(`/api/issues/search?${params.toString()}`);
