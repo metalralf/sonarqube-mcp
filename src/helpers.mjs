@@ -437,10 +437,19 @@ const TEST_DIR_CANDIDATES = ['test', 'tests', 'spec', '__tests__', 'e2e', 'integ
 
 /**
  * Find the first existing test directory.
+ * Checks well-known names first, then scans for .NET test project dirs (e.g. MyProject.Tests/).
  * @param {string} dir — project root
  * @returns {string} — directory name, or '' if none found
  */
-export const detectTestsDir = (dir) => TEST_DIR_CANDIDATES.find((d) => existsSync(join(dir, d))) || '';
+export const detectTestsDir = (dir) => {
+  const found = TEST_DIR_CANDIDATES.find((d) => existsSync(join(dir, d)));
+  if (found) return found;
+  try {
+    const entry = readdirSync(dir, { withFileTypes: true }).find((e) => e.isDirectory() && /\.Tests$/i.test(e.name));
+    if (entry) return entry.name;
+  } catch {}
+  return '';
+};
 
 /**
  * Read and parse .gitignore into a list of patterns (comments and negations removed).
