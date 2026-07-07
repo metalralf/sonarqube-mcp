@@ -643,14 +643,33 @@ export const componentParams = (key, from, to) => {
   return params;
 };
 
+/** @type {string|undefined} */
+let cachedBranch = undefined;
+
+/**
+ * Detect the current git branch, cached after first call.
+ * @param {string} [dir] - project root (defaults to cwd)
+ * @returns {string|undefined}
+ */
+export const getCurrentBranch = (dir) => {
+  if (cachedBranch !== undefined) return cachedBranch;
+  try {
+    const b = detectGitBranch(dir || process.cwd());
+    if (b && b !== 'HEAD') cachedBranch = b;
+  } catch { /* not a git repo or git unavailable */ }
+  return cachedBranch;
+};
+
 /**
  * Add optional branch/pullRequest params to a URLSearchParams.
+ * When no branch is provided, defaults to the current git branch.
  * @param {URLSearchParams} params
  * @param {{ branch?: string, pullRequest?: string }} opts
  * @returns {URLSearchParams}
  */
 export const addBranchParams = (params, { branch, pullRequest }) => {
-  if (branch) params.set('branch', branch);
+  const b = branch || getCurrentBranch();
+  if (b) params.set('branch', b);
   if (pullRequest) params.set('pullRequest', pullRequest);
   return params;
 };
