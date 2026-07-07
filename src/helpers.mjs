@@ -437,10 +437,19 @@ const TEST_DIR_CANDIDATES = ['test', 'tests', 'spec', '__tests__', 'e2e', 'integ
 
 /**
  * Find the first existing test directory.
+ * Checks well-known names first, then scans for .NET test project dirs (e.g. MyProject.Tests/).
  * @param {string} dir — project root
  * @returns {string} — directory name, or '' if none found
  */
-export const detectTestsDir = (dir) => TEST_DIR_CANDIDATES.find((d) => existsSync(join(dir, d))) || '';
+export const detectTestsDir = (dir) => {
+  const found = TEST_DIR_CANDIDATES.find((d) => existsSync(join(dir, d)));
+  if (found) return found;
+  try {
+    const entry = readdirSync(dir, { withFileTypes: true }).find((e) => e.isDirectory() && /\.Tests$/i.test(e.name));
+    if (entry) return entry.name;
+  } catch {}
+  return '';
+};
 
 /**
  * Read and parse .gitignore into a list of patterns (comments and negations removed).
@@ -621,6 +630,8 @@ export const tool = (name, description, schema, handler) => ({ name, description
 export const projectKey = /** @type {import('zod').ZodOptional<import('zod').ZodString>} */ (z.string().optional().describe('Project key (defaults to SONARQUBE_PROJECT)'));
 export const componentKey = /** @type {import('zod').ZodString} */ (z.string().describe('Full component key (e.g. my-project:src/file.ts)'));
 export const maxResults = /** @type {import('zod').ZodOptional<import('zod').ZodNumber>} */ (z.number().optional().describe('Max results (default 50, max 500)'));
+export const branch = /** @type {import('zod').ZodOptional<import('zod').ZodString>} */ (z.string().optional().describe('Long-lived branch name (e.g. main, develop). Use sonar_list_branches to discover valid names.'));
+export const pullRequest = /** @type {import('zod').ZodOptional<import('zod').ZodString>} */ (z.string().optional().describe('Pull request key/ID. Use sonar_list_pull_requests to discover valid keys.'));
 
 /**
  * @param {string} key
@@ -638,6 +649,37 @@ export const componentParams = (key, from, to) => {
   const params = new URLSearchParams({ key });
   if (from) params.set('from', String(from));
   if (to) params.set('to', String(to));
+  return params;
+};
+
+/** @type {string|undefined} */
+let cachedBranch;
+
+/**
+ * Detect the current git branch, cached after first call.
+ * @param {string} [dir] - project root (defaults to cwd)
+ * @returns {string|undefined}
+ */
+export const getCurrentBranch = (dir) => {
+  if (cachedBranch !== undefined) return cachedBranch;
+  try {
+    const b = detectGitBranch(dir || process.cwd());
+    if (b && b !== 'HEAD') cachedBranch = b;
+  } catch { /* not a git repo or git unavailable */ }
+  return cachedBranch;
+};
+
+/**
+ * Add optional branch/pullRequest params to a URLSearchParams.
+ * When no branch is provided, defaults to the current git branch.
+ * @param {URLSearchParams} params
+ * @param {{ branch?: string, pullRequest?: string }} opts
+ * @returns {URLSearchParams}
+ */
+export const addBranchParams = (params, { branch, pullRequest }) => {
+  const b = branch || getCurrentBranch();
+  if (b) params.set('branch', b);
+  if (pullRequest) params.set('pullRequest', pullRequest);
   return params;
 };
 
@@ -665,10 +707,11 @@ export const parseIssueFacets = (issueData) => {
  * @param {boolean} descend
  * @returns {ToolHandler}
  */
-export const measureSearch = (metricKey, valueKey, defaultThresh, descend) => async ({ projectKey, threshold }) => {
+export const measureSearch = (metricKey, valueKey, defaultThresh, descend) => async ({ projectKey, branch, pullRequest, threshold }) => {
   const key = resolveProjectKey({ projectKey });
   const t = threshold ?? defaultThresh;
-  const data = await sonarGet(`/api/measures/search?projectKeys=${encode(key)}&metricKeys=${metricKey}&ps=500`);
+  const params = addBranchParams(new URLSearchParams({ projectKeys: key, metricKeys: metricKey, ps: '500' }), { branch, pullRequest });
+  const data = await sonarGet(`/api/measures/search?${params.toString()}`);
   const extract = (/** @type {any} */ m) => ({ path: m.component.split(':').pop(), [valueKey]: Number.parseFloat(m.value) });
   const items = (data.measures || []).filter((/** @type {any} */ m) => m.value !== undefined && m.component !== key && m.component);
   const sorted = items.map(extract).filter((/** @type {any} */ f) => (descend ? f[valueKey] > t : f[valueKey] < t)).sort((/** @type {any} */ a, /** @type {any} */ b) => descend ? b[valueKey] - a[valueKey] : a[valueKey] - b[valueKey]);

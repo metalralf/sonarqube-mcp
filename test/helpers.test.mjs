@@ -577,6 +577,12 @@ describe('helpers — project config detection', () => {
     rmSync(fresh, { recursive: true, force: true });
   });
 
+  it('detectTestsDir finds .NET test directories', async () => {
+    const { detectTestsDir } = await import('../src/helpers.mjs');
+    write('MyApp.Tests/test.cs');
+    assert.equal(detectTestsDir(tmpDir), 'MyApp.Tests');
+  });
+
   it('parseGitignore reads and filters patterns', async () => {
     const { parseGitignore } = await import('../src/helpers.mjs');
     write('.gitignore', '# comment\nnode_modules/\n*.log\n!important.log\n');

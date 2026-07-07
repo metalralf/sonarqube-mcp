@@ -8,8 +8,8 @@ An MCP server that exposes SonarQube data as AI agent tools. **43 tools** — th
 
 ## Quick start
 
-> Pin to a specific version: `["npx", "-y", "github:metalralf/sonarqube-mcp#1.6.1"]`  
-> Omit `#1.6.1` for the latest (unstable) development version.
+> Pin to a specific version: `["npx", "-y", "github:metalralf/sonarqube-mcp#1.7.0"]`  
+> Omit `#1.7.0` for the latest (unstable) development version.
 
 ### Minimum config (3 required env vars)
 
@@ -19,7 +19,7 @@ An MCP server that exposes SonarQube data as AI agent tools. **43 tools** — th
   "mcpServers": {
     "sonarqube": {
       "command": "npx",
-      "args": ["-y", "github:metalralf/sonarqube-mcp#1.6.1"],
+      "args": ["-y", "github:metalralf/sonarqube-mcp#1.7.0"],
       "env": {
         "SONARQUBE_URL": "http://localhost:9000",
         "SONARQUBE_TOKEN": "squ_...",
@@ -36,7 +36,7 @@ An MCP server that exposes SonarQube data as AI agent tools. **43 tools** — th
   "mcp": {
     "sonarqube": {
       "type": "local",
-      "command": ["npx", "-y", "github:metalralf/sonarqube-mcp#1.6.1"],
+      "command": ["npx", "-y", "github:metalralf/sonarqube-mcp#1.7.0"],
       "enabled": true,
       "environment": {
         "SONARQUBE_URL": "http://localhost:9000",
@@ -182,6 +182,32 @@ An MCP server that exposes SonarQube data as AI agent tools. **43 tools** — th
 | `sonar_setup_scanner` | Auto-install sonar-scanner (pnpm/yarn/npm) |
 | `sonar_run_analysis` | Full scan from the agent |
 
+## Supported Languages
+
+Analysis and detection for all major languages — including C# (which the official SonarQube MCP server's code analysis does **not** support).
+
+| Language | SQ key | Detection | Coverage |
+|---|---|---|---|
+| JavaScript | `js` | `package.json`, `.js/.jsx/.mjs/.cjs` | `lcov.info` |
+| TypeScript | `ts` | `tsconfig.json`, `.ts/.tsx` | `lcov.info` |
+| Python | `py` | `requirements.txt`, `setup.py`, `pyproject.toml`, `.py` | `coverage.xml` |
+| Java | `java` | `pom.xml`, `build.gradle`, `.java` | `jacoco.xml` |
+| Kotlin | `kotlin` | `pom.xml` (kotlin ref), `.kt/.kts` | `kover/report.xml` |
+| Go | `go` | `go.mod`, `.go` | `coverage.out` |
+| **C#** | **`cs`** | **`.csproj`, `.sln`, `.cs`** | **`coverage.cobertura.xml`** |
+| PHP | `php` | `.php` | — |
+| Ruby | `ruby` | `.rb` | — |
+| Rust | `rust` | `.rs` | — |
+| Swift | `swift` | `.swift` | — |
+| Scala | `scala` | `.scala` | — |
+| CSS | `css` | `.css/.scss/.less/.sass` | — |
+| HTML | `web` | `.html/.htm` | — |
+| Docker | `docker` | `Dockerfile` | — |
+| Terraform | `terraform` | `.tf` | — |
+| Kubernetes | `kubernetes` | `.yaml/.yml` (k8s) | — |
+| CloudFormation | `cloudformation` | `.json` (CF) | — |
+| XML / YAML / JSON / Shell / SQL | various | `.xml/.yaml/.json/.sh/.sql` | — |
+
 ## Configuration
 
 ### Environment variables
@@ -216,6 +242,7 @@ All configuration is via env vars. None are required at module scope — they're
 | `SONARQUBE_SCANNER_TIMEOUT` | `300000` | Scanner timeout in ms |
 | `SONARQUBE_API_TIMEOUT` | `5000` | Health check fetch timeout in ms |
 | `SONARQUBE_SOURCE_CONTEXT` | `2` | Lines of source context around issues |
+| `SONARQUBE_LOG_LEVEL` | `info` | Log verbosity: `debug`, `info`, `warn`, `error` |
 | `SONARQUBE_DOCKER_MOUNT_PATH` | `/usr/src` | Container mount target for project dir |
 
 #### Toolset
@@ -271,6 +298,40 @@ curl -X POST http://localhost:8080/tools/sonar_ping -H 'Content-Type: applicatio
 curl -X POST http://localhost:8080/tools/sonar_issues -H 'Content-Type: application/json' -d '{"projectKey":"my_project","compact":true}'
 ```
 
+## Deployment
+
+### Docker Compose (quick start)
+
+```bash
+cp .env.example .env
+# edit .env with your SonarQube credentials
+docker compose up --build
+```
+
+The server runs at `http://localhost:8080`. Configure `SONARQUBE_READ_ONLY=true` for team deployments. Set `SONARQUBE_HTTP_ALLOWED_ORIGINS` for CORS-enabled web clients.
+
+### Kubernetes (Helm)
+
+```bash
+# With inline token
+helm install sonarqube-mcp ./charts/sonarqube-mcp \
+  --set sonarqubeUrl=http://sonarqube:9000 \
+  --set sonarqubeToken=squ_...
+
+# With an existing Secret
+kubectl create secret generic sq-token --from-literal=SONARQUBE_TOKEN=squ_...
+helm install sonarqube-mcp ./charts/sonarqube-mcp \
+  --set sonarqubeUrl=http://sonarqube:9000 \
+  --set existingSecret=sq-token
+```
+
+### Docker build (manual)
+
+```bash
+docker build -t sonarqube-mcp .
+docker run --rm -e SONARQUBE_URL=http://localhost:9000 -e SONARQUBE_TOKEN=squ_... sonarqube-mcp
+```
+
 ## Agent usage guidelines
 
 1. **`sonar_analysis_status`** — check project state first
@@ -320,7 +381,7 @@ node src/index.mjs
 
 | Branch | Purpose | Version |
 |---|---|---|
-| `main` | Stable releases | Tagged (`1.6.1`) |
+| `main` | Stable releases | Tagged (`1.7.0`) |
 | `develop` | Daily development | `1.x.0-dev` |
 | `feature/*` | New tools/features | — |
 

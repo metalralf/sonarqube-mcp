@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.7.0 (2026-07-07)
+
+- **`sonar_call_multiple`** — batch meta-tool: execute tools in linear order, capped at 25, consecutive dedup, recursion guard (in `READ_ONLY_TOOLS`)
+- **`sonar_file_review`** — one-call file review (issues + source + coverage + duplications)
+- **`sonar_scan_workflow`** — detect config → run analysis → project report (full happy path)
+- **`sonar_detect_project_config`** — filesystem introspection → suggested sources/tests/exclusions/coverage/build-tool
+- **Branch / PR parameters** on 16 tools (`sonar_measures`, `sonar_issues`, `sonar_hotspots`, etc.) + auto-detect current git branch
+- **Usage examples** in all 43 tool descriptions for better LLM agent usability
+- **Static edition/permission notes** on 8 tools (token type requirements, permission levels)
+- **C# .NET test directory detection** (`*.Tests/` convention) in `detectTestsDir`
+- **Supported Languages table** in README highlighting C# as differentiator
+- **Leveled logging** with `SONARQUBE_LOG_LEVEL` env var (debug/info/warn/error)
+- **Dockerfile** (multi-stage, non-root, HEALTHCHECK), **docker-compose.yml**, **Helm chart**
+- **Scanner fixes**: `sonar.sources` always forwarded, hardcoded `sonar.tests=test` removed (now optional), scanner stderr surfaced, CE task polling, Docker image pinned to `:11.1`
+- **AGENTS.md**: lessons learned gotchas section, composite/meta-tool patterns, READ_ONLY_TOOLS, scanner command construction
+- **43 total tools** (was 39)
+
 ## 1.6.1 (2026-07-07)
 
 - Fix S2871: add compare function to `sort()` in `detectSourceLanguages` (use `localeCompare`)
