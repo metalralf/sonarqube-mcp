@@ -653,7 +653,7 @@ export const componentParams = (key, from, to) => {
 };
 
 /** @type {string|undefined} */
-let cachedBranch = undefined;
+let cachedBranch;
 
 /**
  * Detect the current git branch, cached after first call.
