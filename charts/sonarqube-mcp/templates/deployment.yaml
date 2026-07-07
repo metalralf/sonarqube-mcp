@@ -1,0 +1,80 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "sonarqube-mcp.fullname" . }}
+  labels:
+    app.kubernetes.io/name: {{ include "sonarqube-mcp.name" . }}
+    helm.sh/chart: {{ include "sonarqube-mcp.chart" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "sonarqube-mcp.name" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ include "sonarqube-mcp.name" . }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+    spec:
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: 8080
+              name: http
+          env:
+            - name: SONARQUBE_URL
+              value: {{ .Values.sonarqubeUrl | quote }}
+            {{- if .Values.existingSecret }}
+            - name: SONARQUBE_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.existingSecret }}
+                  key: {{ .Values.existingSecretKey }}
+            {{- else }}
+            - name: SONARQUBE_TOKEN
+              value: {{ .Values.sonarqubeToken | quote }}
+            {{- end }}
+            {{- if .Values.sonarqubeProject }}
+            - name: SONARQUBE_PROJECT
+              value: {{ .Values.sonarqubeProject | quote }}
+            {{- end }}
+            - name: SONARQUBE_HTTP_PORT
+              value: "8080"
+            - name: SONARQUBE_TRANSPORT
+              value: "http"
+            - name: SONARQUBE_READ_ONLY
+              value: {{ .Values.readOnly | quote }}
+            - name: SONARQUBE_HTTP_ALLOWED_ORIGINS
+              value: {{ .Values.allowedOrigins | quote }}
+            - name: SONARQUBE_LOG_LEVEL
+              value: {{ .Values.logLevel | quote }}
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

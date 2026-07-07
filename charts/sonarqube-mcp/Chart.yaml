@@ -1,0 +1,13 @@
+apiVersion: v2
+name: sonarqube-mcp
+description: Helm chart for the SonarQube MCP Server (HTTP transport)
+type: application
+version: 1.6.1
+appVersion: 1.6.1
+keywords:
+  - sonarqube
+  - mcp
+  - code-quality
+home: https://github.com/metalralf/sonarqube-mcp
+sources:
+  - https://github.com/metalralf/sonarqube-mcp

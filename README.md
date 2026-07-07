@@ -297,6 +297,40 @@ curl -X POST http://localhost:8080/tools/sonar_ping -H 'Content-Type: applicatio
 curl -X POST http://localhost:8080/tools/sonar_issues -H 'Content-Type: application/json' -d '{"projectKey":"my_project","compact":true}'
 ```
 
+## Deployment
+
+### Docker Compose (quick start)
+
+```bash
+cp .env.example .env
+# edit .env with your SonarQube credentials
+docker compose up --build
+```
+
+The server runs at `http://localhost:8080`. Configure `SONARQUBE_READ_ONLY=true` for team deployments. Set `SONARQUBE_HTTP_ALLOWED_ORIGINS` for CORS-enabled web clients.
+
+### Kubernetes (Helm)
+
+```bash
+# With inline token
+helm install sonarqube-mcp ./charts/sonarqube-mcp \
+  --set sonarqubeUrl=http://sonarqube:9000 \
+  --set sonarqubeToken=squ_...
+
+# With an existing Secret
+kubectl create secret generic sq-token --from-literal=SONARQUBE_TOKEN=squ_...
+helm install sonarqube-mcp ./charts/sonarqube-mcp \
+  --set sonarqubeUrl=http://sonarqube:9000 \
+  --set existingSecret=sq-token
+```
+
+### Docker build (manual)
+
+```bash
+docker build -t sonarqube-mcp .
+docker run --rm -e SONARQUBE_URL=http://localhost:9000 -e SONARQUBE_TOKEN=squ_... sonarqube-mcp
+```
+
 ## Agent usage guidelines
 
 1. **`sonar_analysis_status`** — check project state first
