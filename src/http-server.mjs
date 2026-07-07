@@ -121,10 +121,10 @@ export const startHttpServer = async (tools) => {
   return new Promise((resolve, reject) => {
     server.listen(port, host, () => {
       const addr = /** @type {import('node:net').AddressInfo} */ (server.address());
-      log(`HTTP server listening on http://${addr.address}:${addr.port}`);
-      log(`  GET  /health          — health check`);
-      log(`  GET  /tools           — list tools`);
-      log(`  POST /tools/:name     — execute a tool`);
+      log('info', `HTTP server listening on http://${addr.address}:${addr.port}`);
+      log('info', `  GET  /health          — health check`);
+      log('info', `  GET  /tools           — list tools`);
+      log('info', `  POST /tools/:name     — execute a tool`);
       resolve(server);
     });
     server.on('error', reject);
