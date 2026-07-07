@@ -1,0 +1,41 @@
+# -- SonarQube MCP Server
+replicaCount: 1
+
+image:
+  repository: ghcr.io/metalralf/sonarqube-mcp
+  tag: latest
+  pullPolicy: Always
+
+nameOverride: ""
+fullnameOverride: ""
+
+service:
+  type: ClusterIP
+  port: 8080
+
+# -- Required: SonarQube instance URL
+sonarqubeUrl: "http://sonarqube:9000"
+# -- Required: SonarQube token (use an existing secret or set via --set)
+sonarqubeToken: ""
+# -- Name of an existing Secret containing SONARQUBE_TOKEN
+existingSecret: ""
+# -- Key in existingSecret that holds the token
+existingSecretKey: "SONARQUBE_TOKEN"
+# -- Optional: default project key
+sonarqubeProject: ""
+# -- Enable read-only mode
+readOnly: false
+# -- Comma-separated CORS origins
+allowedOrigins: ""
+# -- Log level: debug, info, warn, error
+logLevel: info
+
+resources:
+  limits:
+    memory: 256Mi
+  requests:
+    memory: 128Mi
+
+nodeSelector: {}
+tolerations: []
+affinity: {}

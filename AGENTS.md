@@ -241,7 +241,7 @@ When the maintainer decides to ship:
 1. **Cut `release/vX.Y.Z`** from main
 2. **Run gate**: `typecheck → test → coverage:check`
 3. **Update CHANGELOG.md** with all changes since last tag
-4. **Bump version** in `package.json`, `src/index.mjs`, `README.md`
+4. **Bump version** in `package.json`, `src/index.mjs`, `README.md`, `charts/sonarqube-mcp/Chart.yaml`
 5. **Commit** as `chore: bump to vX.Y.Z`
 6. **Tag and push**: `git tag vX.Y.Z && git push origin vX.Y.Z`
 7. **Create GitHub Release** — maintainer does this
@@ -259,3 +259,4 @@ See `RELEASE.md` for the full step-by-step.
 6. Check quality gate via `sonar_quality_gate` tool
 7. **Never tag or push a version bump on main** — that only happens on release branches
 8. **Pre-commit hook gotcha**: `.git/hooks/pre-commit` runs the full suite including integration tests. If `SONARQUBE_TOKEN` is set, integration tests make live HTTP calls. To commit without live calls: `SONARQUBE_TOKEN= git commit ...`
+9. **Version bump checklist**: when bumping, update `package.json`, `src/index.mjs`, `README.md`, and `charts/sonarqube-mcp/Chart.yaml` — they all carry the version string
