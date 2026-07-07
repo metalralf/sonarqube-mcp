@@ -116,7 +116,7 @@ const ALL_TOOLS = [
     return { pong: true, health: health.health || 'unknown' };
   }),
 
-  tool('sonar_raw', 'Escape hatch — call any GET endpoint. Examples: sonar_raw({ path: "/api/system/health" })',
+  tool('sonar_raw', 'Escape hatch — call any GET endpoint. Requires appropriate token permissions for the endpoint. Examples: sonar_raw({ path: "/api/system/health" })',
     { path: z.string().describe('API path starting with /api/ (e.g. /api/system/health)') },
   async ({ path }) => {
     if (!path?.startsWith('/')) throw new Error('path must start with /');
@@ -280,7 +280,7 @@ const ALL_TOOLS = [
     return data;
   }),
 
-  tool('sonar_set_issue_status', 'Mark issue as confirmed, false positive, wontfix, resolved. Examples: sonar_set_issue_status({ issueKey: "AX12345", transition: "confirm" }), sonar_set_issue_status({ issueKey: "AX12345", transition: "falsepositive" })', {
+  tool('sonar_set_issue_status', 'Mark issue as confirmed, false positive, wontfix, resolved — requires Browse permission on the project. Examples: sonar_set_issue_status({ issueKey: "AX12345", transition: "confirm" }), sonar_set_issue_status({ issueKey: "AX12345", transition: "falsepositive" })', {
     issueKey: z.string().describe('Issue key'),
     transition: z.enum(['confirm', 'unconfirm', 'reopen', 'resolve', 'falsepositive', 'wontfix']).describe('Transition. Examples: "confirm", "falsepositive", "resolve", "wontfix", "reopen"'),
   }, async ({ issueKey, transition }) => {
@@ -288,7 +288,7 @@ const ALL_TOOLS = [
     return sonarPost('/api/issues/do_transition', new URLSearchParams({ issue: issueKey, transition }).toString());
   }),
 
-  tool('sonar_issues_bulk_transition', 'Transition multiple issues at once. Examples: sonar_issues_bulk_transition({ issueKeys: ["AX12345", "AX12346"], transition: "resolve" })', {
+  tool('sonar_issues_bulk_transition', 'Transition multiple issues at once — requires Browse permission on the project. Examples: sonar_issues_bulk_transition({ issueKeys: ["AX12345", "AX12346"], transition: "resolve" })', {
     issueKeys: z.array(z.string()).describe('Array of issue keys'),
     transition: z.enum(['confirm', 'unconfirm', 'reopen', 'resolve', 'falsepositive', 'wontfix']).describe('Transition for all. Examples: "confirm", "falsepositive", "resolve", "wontfix", "reopen"'),
   }, async ({ issueKeys, transition }) => {
@@ -310,14 +310,14 @@ const ALL_TOOLS = [
     return maybeTruncated(await sonarGet(`/api/hotspots/search?${params.toString()}`));
   }),
 
-  tool('sonar_hotspot_details', 'Full hotspot details: rule, code context, flows, comments. Examples: sonar_hotspot_details({ hotspotKey: "AZ67890" })', {
+  tool('sonar_hotspot_details', 'Full hotspot details: rule, code context, flows, comments (needs squ_ token — project/global tokens return 403). Examples: sonar_hotspot_details({ hotspotKey: "AZ67890" })', {
     hotspotKey: z.string().describe('Hotspot key'),
   }, async ({ hotspotKey }) => {
     if (!hotspotKey) throw new Error('hotspotKey is required');
     return sonarGet(`/api/hotspots/show?hotspot=${encode(hotspotKey)}`);
   }),
 
-  tool('sonar_change_hotspot_status', 'Review a hotspot: REVIEWED with resolution or TO_REVIEW. Examples: sonar_change_hotspot_status({ hotspotKey: "AZ67890", status: "REVIEWED", resolution: "SAFE" })', {
+  tool('sonar_change_hotspot_status', 'Review a hotspot: REVIEWED with resolution or TO_REVIEW (needs squ_ token with Browse permission). Examples: sonar_change_hotspot_status({ hotspotKey: "AZ67890", status: "REVIEWED", resolution: "SAFE" })', {
     hotspotKey: z.string().describe('Hotspot key'),
     status: z.enum(['TO_REVIEW', 'REVIEWED']).describe('New status. Example: "TO_REVIEW"'),
     resolution: z.enum(['FIXED', 'SAFE', 'ACKNOWLEDGED']).optional().describe('Required when REVIEWED. Example: "SAFE"'),
@@ -358,7 +358,7 @@ const ALL_TOOLS = [
     return data;
   }),
 
-  tool('sonar_list_webhooks', 'List webhooks for a project. Examples: sonar_list_webhooks({ projectKey: "my_proj" })', {
+  tool('sonar_list_webhooks', 'List webhooks for a project — requires Admin permissions. Examples: sonar_list_webhooks({ projectKey: "my_proj" })', {
     projectKey: z.string().optional().describe('Project key. Omit for global webhooks.'),
   }, async ({ projectKey: pk }) => {
     const params = new URLSearchParams();
@@ -400,7 +400,7 @@ const ALL_TOOLS = [
     return cfg;
   }),
 
-  tool('sonar_run_analysis', 'Run sonar-scanner analysis (auto-detects language, prefers Docker, falls back to local sonar-scanner via npm/PATH). Examples: sonar_run_analysis({ cwd: "/path/to/project" })', {
+  tool('sonar_run_analysis', 'Run sonar-scanner analysis (auto-detects language, prefers Docker, falls back to local sonar-scanner via npm/PATH). Requires a user token (squ_, sqp_, or sqa_) with Execute Analysis permission. Examples: sonar_run_analysis({ cwd: "/path/to/project" })', {
     cwd: z.string().optional().describe('Project root'),
     token: z.string().optional().describe('Token'),
     projectKey: z.string().optional().describe('Override project key'),
