@@ -1,12 +1,26 @@
+# === Dependencies ===
 node_modules/
+
+# === Secrets & credentials ===
 .sonar.token
+
+# === Local config (user-specific, not shared) ===
 .mcp.json
 opencode.jsonc
 opencode.json
+
+# === Generated at analysis time by sonar_run_analysis ===
 sonar-project.properties
 .scannerwork/
+
+# === Coverage reports (c8 output) ===
 coverage/
-.code-review-graph/
-.playwright-mcp/
 coverage-all/
+
+# === Tool artifacts ===
+.code-review-graph/      # code-review-graph MCP server knowledge graph
+.playwright-mcp/         # Playwright MCP server data
+ideas/                   # Internal design docs, not for distribution
+
+# === Research notes ===
 COVERAGE-RESEARCH.md
