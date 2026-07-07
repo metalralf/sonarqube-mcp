@@ -182,6 +182,32 @@ An MCP server that exposes SonarQube data as AI agent tools. **43 tools** — th
 | `sonar_setup_scanner` | Auto-install sonar-scanner (pnpm/yarn/npm) |
 | `sonar_run_analysis` | Full scan from the agent |
 
+## Supported Languages
+
+Analysis and detection for all major languages — including C# (which the official SonarQube MCP server's code analysis does **not** support).
+
+| Language | SQ key | Detection | Coverage |
+|---|---|---|---|
+| JavaScript | `js` | `package.json`, `.js/.jsx/.mjs/.cjs` | `lcov.info` |
+| TypeScript | `ts` | `tsconfig.json`, `.ts/.tsx` | `lcov.info` |
+| Python | `py` | `requirements.txt`, `setup.py`, `pyproject.toml`, `.py` | `coverage.xml` |
+| Java | `java` | `pom.xml`, `build.gradle`, `.java` | `jacoco.xml` |
+| Kotlin | `kotlin` | `pom.xml` (kotlin ref), `.kt/.kts` | `kover/report.xml` |
+| Go | `go` | `go.mod`, `.go` | `coverage.out` |
+| **C#** | **`cs`** | **`.csproj`, `.sln`, `.cs`** | **`coverage.cobertura.xml`** |
+| PHP | `php` | `.php` | — |
+| Ruby | `ruby` | `.rb` | — |
+| Rust | `rust` | `.rs` | — |
+| Swift | `swift` | `.swift` | — |
+| Scala | `scala` | `.scala` | — |
+| CSS | `css` | `.css/.scss/.less/.sass` | — |
+| HTML | `web` | `.html/.htm` | — |
+| Docker | `docker` | `Dockerfile` | — |
+| Terraform | `terraform` | `.tf` | — |
+| Kubernetes | `kubernetes` | `.yaml/.yml` (k8s) | — |
+| CloudFormation | `cloudformation` | `.json` (CF) | — |
+| XML / YAML / JSON / Shell / SQL | various | `.xml/.yaml/.json/.sh/.sql` | — |
+
 ## Configuration
 
 ### Environment variables
