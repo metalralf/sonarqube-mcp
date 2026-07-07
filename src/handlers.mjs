@@ -30,7 +30,7 @@ const executeCall = async (call, order) => {
 };
 
 const ALL_TOOLS = [
-  tool('sonar_projects_create', 'Create a new project in SonarQube. Requires admin permissions.', {
+  tool('sonar_projects_create', 'Create a new project in SonarQube. Requires admin permissions. Examples: sonar_projects_create({ projectKey: "new_project" }), sonar_projects_create({ projectKey: "new_project", name: "My Project" })', {
     projectKey: z.string().describe('Key for the new project (e.g. my_new_project)'),
     name: z.string().optional().describe('Display name (defaults to projectKey)'),
   }, async ({ projectKey: pk, name }) => {
@@ -38,7 +38,7 @@ const ALL_TOOLS = [
     return sonarPost('/api/projects/create', params.toString());
   }),
 
-  tool('sonar_project_details', 'Get detailed information about a project.', {
+  tool('sonar_project_details', 'Get detailed information about a project. Examples: sonar_project_details({ projectKey: "my_proj" })', {
     projectKey,
     branch,
     pullRequest,
@@ -53,7 +53,7 @@ const ALL_TOOLS = [
     return { key, name: comp?.component?.name || null, description: comp?.component?.description || null, qualifier: comp?.component?.qualifier || null, analysisDate: analyses?.analyses?.[0]?.date || null, projectUrl: `${getHostUrl()}/dashboard?id=${encode(key)}` };
   }),
 
-  tool('sonar_search_projects', 'Search/find SonarQube project keys.', {
+  tool('sonar_search_projects', 'Search/find SonarQube project keys. Examples: sonar_search_projects({ query: "my" }), sonar_search_projects({ limit: 10 })', {
     query: z.string().optional().describe('Optional search query to filter projects by name/key'),
     limit: maxResults,
     branch,
@@ -64,7 +64,7 @@ const ALL_TOOLS = [
     return maybeTruncated(await sonarGet(`/api/projects/search?${params.toString()}${orgQuery()}`));
   }),
 
-  tool('sonar_summary', 'Get aggregated project health: QG, metrics, issues, branches.', {
+  tool('sonar_summary', 'Get aggregated project health: QG, metrics, issues, branches. Examples: sonar_summary({ projectKey: "my_proj" })', {
     projectKey,
     branch,
     pullRequest,
@@ -91,7 +91,7 @@ const ALL_TOOLS = [
     };
   }),
 
-  tool('sonar_analysis_status', 'Check if a project has been analyzed.', {
+  tool('sonar_analysis_status', 'Check if a project has been analyzed. Examples: sonar_analysis_status({ projectKey: "my_proj" })', {
     projectKey,
     branch,
     pullRequest,
@@ -109,14 +109,14 @@ const ALL_TOOLS = [
     return { status: 'ANALYZED', lastAnalysis: last.date, projectUrl: `${getHostUrl()}/dashboard?id=${encode(key)}` };
   }),
 
-  tool('sonar_ping', 'Ping server health — returns pong + status.', {
+  tool('sonar_ping', 'Ping server health — returns pong + status. Examples: sonar_ping({})', {
   }, async () => {
     const health = await sonarCheckServer();
     if (!health.reachable) return { status: 'UNREACHABLE', message: `Cannot reach SonarQube at ${getHostUrl()}`, hint: health.hint };
     return { pong: true, health: health.health || 'unknown' };
   }),
 
-  tool('sonar_raw', 'Escape hatch — call any GET endpoint.',
+  tool('sonar_raw', 'Escape hatch — call any GET endpoint. Examples: sonar_raw({ path: "/api/system/health" })',
     { path: z.string().describe('API path starting with /api/ (e.g. /api/system/health)') },
   async ({ path }) => {
     if (!path?.startsWith('/')) throw new Error('path must start with /');
@@ -127,7 +127,7 @@ const ALL_TOOLS = [
     }
   }),
 
-  tool('sonar_quality_gate', 'Get QG status with failing conditions.', {
+  tool('sonar_quality_gate', 'Get QG status with failing conditions. Examples: sonar_quality_gate({ projectKey: "my_proj" })', {
     projectKey,
     branch,
     pullRequest,
@@ -137,10 +137,10 @@ const ALL_TOOLS = [
     return sonarGet(`/api/qualitygates/project_status?${params.toString()}`);
   }),
 
-  tool('sonar_list_quality_gates', 'List all quality gates.', {
+  tool('sonar_list_quality_gates', 'List all quality gates. Examples: sonar_list_quality_gates({})', {
   }, async () => sonarGet('/api/qualitygates/list')),
 
-  tool('sonar_measures', 'Get metrics: bugs, smells, coverage, ratings, ncloc, dup.', {
+  tool('sonar_measures', 'Get metrics: bugs, smells, coverage, ratings, ncloc, dup. Examples: sonar_measures({ projectKey: "my_proj" }), sonar_measures({ projectKey: "my_proj", metricKeys: "coverage,bugs" })', {
     projectKey,
     branch,
     pullRequest,
@@ -152,7 +152,7 @@ const ALL_TOOLS = [
     return sonarGet(`/api/measures/component?${params.toString()}`);
   }),
 
-  tool('sonar_search_metrics', 'Browse available metric definitions.', {
+  tool('sonar_search_metrics', 'Browse available metric definitions. Examples: sonar_search_metrics({ query: "coverage" })', {
     query: z.string().optional().describe('Search query'),
     limit: maxResults,
   }, async ({ query, limit }) => {
@@ -161,7 +161,7 @@ const ALL_TOOLS = [
     return sonarGet(`/api/metrics/search?${params.toString()}`);
   }),
 
-  tool('sonar_metrics_history', 'Get metric history over time (e.g. coverage trajectory).', {
+  tool('sonar_metrics_history', 'Get metric history over time (e.g. coverage trajectory). Examples: sonar_metrics_history({ projectKey: "my_proj", metric: "coverage" }), sonar_metrics_history({ projectKey: "my_proj", metric: "bugs", days: 14 })', {
     projectKey,
     branch,
     pullRequest,
@@ -175,7 +175,7 @@ const ALL_TOOLS = [
     return sonarGet(`/api/measures/search_history?${params.toString()}`);
   }),
 
-  tool('sonar_worst_metrics', 'Find files with worst metric values.', {
+  tool('sonar_worst_metrics', 'Find files with worst metric values. Examples: sonar_worst_metrics({ projectKey: "my_proj" }), sonar_worst_metrics({ projectKey: "my_proj", metrics: "coverage,duplicated_lines_density", limit: 5 })', {
     projectKey,
     branch,
     pullRequest,
@@ -207,12 +207,12 @@ const ALL_TOOLS = [
     return out;
   }),
 
-  tool('sonar_issues', 'Search open issues sorted by severity.', {
+  tool('sonar_issues', 'Search open issues sorted by severity. Examples: sonar_issues({ projectKey: "my_proj" }), sonar_issues({ projectKey: "my_proj", severities: "CRITICAL,BLOCKER", types: "BUG", compact: true })', {
     projectKey,
     branch,
     pullRequest,
-    severities: z.union([z.string(), z.array(z.string())]).optional().describe('Comma-separated or array: INFO,MINOR,MAJOR,CRITICAL,BLOCKER'),
-    types: z.union([z.string(), z.array(z.string())]).optional().describe('Comma-separated or array: CODE_SMELL,BUG,VULNERABILITY,SECURITY_HOTSPOT'),
+    severities: z.union([z.string(), z.array(z.string())]).optional().describe('Comma-separated or array: INFO,MINOR,MAJOR,CRITICAL,BLOCKER. Example: "CRITICAL,BLOCKER"'),
+    types: z.union([z.string(), z.array(z.string())]).optional().describe('Comma-separated or array: CODE_SMELL,BUG,VULNERABILITY,SECURITY_HOTSPOT. Example: "BUG,CODE_SMELL"'),
     resolved: z.boolean().optional().describe('Include resolved issues'),
     statuses: z.string().optional().describe('Comma-separated statuses: OPEN,CONFIRMED,REOPENED,RESOLVED,CLOSED'),
     limit: maxResults,
@@ -238,7 +238,7 @@ const ALL_TOOLS = [
     return data;
   }),
 
-  tool('sonar_issues_summary', 'Aggregated issue counts by severity and type.', {
+  tool('sonar_issues_summary', 'Aggregated issue counts by severity and type. Examples: sonar_issues_summary({ projectKey: "my_proj" })', {
     projectKey,
     branch,
     pullRequest,
@@ -258,12 +258,12 @@ const ALL_TOOLS = [
     return { total: data.total, by_severity: bySeverity, by_type: byType, effortTotal };
   }),
 
-  tool('sonar_new_issues', 'Issues created since the last analysis.', {
+  tool('sonar_new_issues', 'Issues created since the last analysis. Examples: sonar_new_issues({ projectKey: "my_proj", compact: true })', {
     projectKey,
     branch,
     pullRequest,
-    severities: z.union([z.string(), z.array(z.string())]).optional().describe('Comma-separated or array'),
-    types: z.union([z.string(), z.array(z.string())]).optional().describe('Comma-separated or array'),
+    severities: z.union([z.string(), z.array(z.string())]).optional().describe('Comma-separated or array. Example: "CRITICAL,BLOCKER"'),
+    types: z.union([z.string(), z.array(z.string())]).optional().describe('Comma-separated or array. Example: "BUG,CODE_SMELL"'),
     limit: maxResults,
     compact: z.boolean().optional().describe('Strip verbose fields'),
   }, async ({ projectKey: pk, branch, pullRequest, severities, types, limit, compact }) => {
@@ -280,27 +280,27 @@ const ALL_TOOLS = [
     return data;
   }),
 
-  tool('sonar_set_issue_status', 'Mark issue as confirmed, false positive, wontfix, resolved.', {
+  tool('sonar_set_issue_status', 'Mark issue as confirmed, false positive, wontfix, resolved. Examples: sonar_set_issue_status({ issueKey: "AX12345", transition: "confirm" }), sonar_set_issue_status({ issueKey: "AX12345", transition: "falsepositive" })', {
     issueKey: z.string().describe('Issue key'),
-    transition: z.enum(['confirm', 'unconfirm', 'reopen', 'resolve', 'falsepositive', 'wontfix']).describe('Transition'),
+    transition: z.enum(['confirm', 'unconfirm', 'reopen', 'resolve', 'falsepositive', 'wontfix']).describe('Transition. Examples: "confirm", "falsepositive", "resolve", "wontfix", "reopen"'),
   }, async ({ issueKey, transition }) => {
     if (!issueKey) throw new Error('issueKey is required');
     return sonarPost('/api/issues/do_transition', new URLSearchParams({ issue: issueKey, transition }).toString());
   }),
 
-  tool('sonar_issues_bulk_transition', 'Transition multiple issues at once.', {
+  tool('sonar_issues_bulk_transition', 'Transition multiple issues at once. Examples: sonar_issues_bulk_transition({ issueKeys: ["AX12345", "AX12346"], transition: "resolve" })', {
     issueKeys: z.array(z.string()).describe('Array of issue keys'),
-    transition: z.enum(['confirm', 'unconfirm', 'reopen', 'resolve', 'falsepositive', 'wontfix']).describe('Transition for all'),
+    transition: z.enum(['confirm', 'unconfirm', 'reopen', 'resolve', 'falsepositive', 'wontfix']).describe('Transition for all. Examples: "confirm", "falsepositive", "resolve", "wontfix", "reopen"'),
   }, async ({ issueKeys, transition }) => {
     if (!issueKeys?.length) throw new Error('issueKeys array is required');
     return sonarPost('/api/issues/bulk_change', new URLSearchParams({ issues: issueKeys.join(','), transition }).toString());
   }),
 
-  tool('sonar_hotspots', 'Search security hotspots (needs squ_ token).', {
+  tool('sonar_hotspots', 'Search security hotspots (needs squ_ token). Examples: sonar_hotspots({ projectKey: "my_proj" }), sonar_hotspots({ projectKey: "my_proj", status: "TO_REVIEW" })', {
     projectKey,
     branch,
     pullRequest,
-    status: z.string().optional().describe('TO_REVIEW or REVIEWED'),
+    status: z.string().optional().describe('TO_REVIEW or REVIEWED. Example: "TO_REVIEW"'),
     limit: z.number().optional().describe('Max results (default 30, max 500)'),
   }, async ({ projectKey, branch, pullRequest, status, limit }) => {
     const token = process.env.SONARQUBE_TOKEN || '';
@@ -310,17 +310,17 @@ const ALL_TOOLS = [
     return maybeTruncated(await sonarGet(`/api/hotspots/search?${params.toString()}`));
   }),
 
-  tool('sonar_hotspot_details', 'Full hotspot details: rule, code context, flows, comments.', {
+  tool('sonar_hotspot_details', 'Full hotspot details: rule, code context, flows, comments. Examples: sonar_hotspot_details({ hotspotKey: "AZ67890" })', {
     hotspotKey: z.string().describe('Hotspot key'),
   }, async ({ hotspotKey }) => {
     if (!hotspotKey) throw new Error('hotspotKey is required');
     return sonarGet(`/api/hotspots/show?hotspot=${encode(hotspotKey)}`);
   }),
 
-  tool('sonar_change_hotspot_status', 'Review a hotspot: REVIEWED with resolution or TO_REVIEW.', {
+  tool('sonar_change_hotspot_status', 'Review a hotspot: REVIEWED with resolution or TO_REVIEW. Examples: sonar_change_hotspot_status({ hotspotKey: "AZ67890", status: "REVIEWED", resolution: "SAFE" })', {
     hotspotKey: z.string().describe('Hotspot key'),
-    status: z.enum(['TO_REVIEW', 'REVIEWED']).describe('New status'),
-    resolution: z.enum(['FIXED', 'SAFE', 'ACKNOWLEDGED']).optional().describe('Required when REVIEWED'),
+    status: z.enum(['TO_REVIEW', 'REVIEWED']).describe('New status. Example: "TO_REVIEW"'),
+    resolution: z.enum(['FIXED', 'SAFE', 'ACKNOWLEDGED']).optional().describe('Required when REVIEWED. Example: "SAFE"'),
     comment: z.string().optional().describe('Optional comment'),
   }, async ({ hotspotKey, status, resolution, comment }) => {
     if (!hotspotKey) throw new Error('hotspotKey is required');
@@ -330,14 +330,14 @@ const ALL_TOOLS = [
     return sonarPost('/api/hotspots/change_status', body.toString());
   }),
 
-  tool('sonar_rule', 'Explain a rule.', {
+  tool('sonar_rule', 'Explain a rule. Examples: sonar_rule({ ruleKey: "typescript:S6544" })', {
     ruleKey: z.string().describe('Rule key (e.g. typescript:S6544)'),
   }, async ({ ruleKey }) => {
     if (!ruleKey) throw new Error('ruleKey is required');
     return sonarGet(`/api/rules/show?key=${encode(ruleKey)}`);
   }),
 
-  tool('sonar_scm_info', 'Git blame per line: author, date, revision.', {
+  tool('sonar_scm_info', 'Git blame per line: author, date, revision. Examples: sonar_scm_info({ key: "my_proj:src/file.ts" })', {
     key: componentKey,
     from: z.number().optional().describe('Starting line'),
     to: z.number().optional().describe('Ending line'),
@@ -346,7 +346,7 @@ const ALL_TOOLS = [
     return sonarGet(`/api/sources/scm?${componentParams(key, from, to).toString()}`);
   }),
 
-  tool('sonar_source', 'View source lines. Optional highlight_uncovered marks untested lines.', {
+  tool('sonar_source', 'View source lines. Optional highlight_uncovered marks untested lines. Examples: sonar_source({ key: "my_proj:src/file.ts" }), sonar_source({ key: "my_proj:src/file.ts", from: 10, to: 50 })', {
     key: componentKey,
     from: z.number().optional().describe('Starting line'),
     to: z.number().optional().describe('Ending line'),
@@ -358,7 +358,7 @@ const ALL_TOOLS = [
     return data;
   }),
 
-  tool('sonar_list_webhooks', 'List webhooks for a project.', {
+  tool('sonar_list_webhooks', 'List webhooks for a project. Examples: sonar_list_webhooks({ projectKey: "my_proj" })', {
     projectKey: z.string().optional().describe('Project key. Omit for global webhooks.'),
   }, async ({ projectKey: pk }) => {
     const params = new URLSearchParams();
@@ -367,10 +367,10 @@ const ALL_TOOLS = [
     return sonarGet(`/api/webhooks/list?${params.toString()}`);
   }),
 
-  tool('sonar_list_languages', 'List all supported languages.', {
+  tool('sonar_list_languages', 'List all supported languages. Examples: sonar_list_languages({})', {
   }, async () => { const d = await sonarGet('/api/languages/list'); return d.languages || []; }),
 
-  tool('sonar_setup_scanner', 'Install sonar-scanner (detects Docker first, falls back to pnpm/yarn/npm).', {
+  tool('sonar_setup_scanner', 'Install sonar-scanner (detects Docker first, falls back to pnpm/yarn/npm). Examples: sonar_setup_scanner({ cwd: "/path/to/project" })', {
     cwd: z.string().optional().describe('Project root'),
   }, async ({ cwd }) => {
     const dir = cwd || process.cwd();
@@ -384,7 +384,7 @@ const ALL_TOOLS = [
     return { installed: true, packageManager: cmd, output: execSync(`${cmd} ${args.join(' ')}`, { cwd: dir, encoding: 'utf8', timeout: getScannerTimeout() }) };
   }),
 
-  tool('sonar_detect_project_config', 'Inspect a project directory and return a suggested SonarQube analysis configuration (sources, tests, exclusions, coverage, build tool). Does not modify anything — review then pass to sonar_run_analysis.', {
+  tool('sonar_detect_project_config', 'Inspect a project directory and return a suggested SonarQube analysis configuration (sources, tests, exclusions, coverage, build tool). Does not modify anything — review then pass to sonar_run_analysis. Examples: sonar_detect_project_config({ projectRoot: "/path/to/project" })', {
     projectRoot: z.string().optional().describe('Project root (defaults to cwd)'),
   }, async ({ projectRoot }) => {
     const dir = projectRoot || process.cwd();
@@ -400,7 +400,7 @@ const ALL_TOOLS = [
     return cfg;
   }),
 
-  tool('sonar_run_analysis', 'Run sonar-scanner analysis (auto-detects language, prefers Docker, falls back to local sonar-scanner via npm/PATH).', {
+  tool('sonar_run_analysis', 'Run sonar-scanner analysis (auto-detects language, prefers Docker, falls back to local sonar-scanner via npm/PATH). Examples: sonar_run_analysis({ cwd: "/path/to/project" })', {
     cwd: z.string().optional().describe('Project root'),
     token: z.string().optional().describe('Token'),
     projectKey: z.string().optional().describe('Override project key'),
@@ -464,7 +464,7 @@ const ALL_TOOLS = [
     };
   }),
 
-  tool('sonar_list_pull_requests', 'List PRs (requires Developer Edition+).', {
+  tool('sonar_list_pull_requests', 'List PRs (requires Developer Edition+). Examples: sonar_list_pull_requests({ projectKey: "my_proj" })', {
     projectKey,
   }, async ({ projectKey: pk }) => {
     const key = resolveProjectKey({ projectKey: pk });
@@ -473,14 +473,14 @@ const ALL_TOOLS = [
     return data.pullRequests.map(({ key: k, branch, title, analysisDate, status, url }) => ({ key: k, branch, title, analysisDate, status: status?.qualityGateStatus, url }));
   }),
 
-  tool('sonar_file_coverage_details', 'Line/condition coverage % for a file.', {
+  tool('sonar_file_coverage_details', 'Line/condition coverage % for a file. Examples: sonar_file_coverage_details({ key: "my_proj:src/file.ts" })', {
     key: componentKey,
   }, async ({ key }) => {
     requireKey(key);
     return sonarGet(`/api/measures/component?component=${encode(key)}&metricKeys=coverage,uncovered_lines,uncovered_conditions,lines_to_cover,conditions_to_cover,branch_coverage`);
   }),
 
-  tool('sonar_list_branches', 'List branches with analysis dates and QG status.', {
+  tool('sonar_list_branches', 'List branches with analysis dates and QG status. Examples: sonar_list_branches({ projectKey: "my_proj" })', {
     projectKey,
   }, async ({ projectKey: pk }) => {
     const key = resolveProjectKey({ projectKey: pk });
@@ -488,21 +488,21 @@ const ALL_TOOLS = [
     return (data.branches || []).map(({ name, isMain, analysisDate, status }) => ({ name, isMain, analysisDate, status: status?.qualityGateStatus }));
   }),
 
-  tool('sonar_coverage_files', 'Find files with coverage below threshold.', {
+  tool('sonar_coverage_files', 'Find files with coverage below threshold. Examples: sonar_coverage_files({ projectKey: "my_proj" }), sonar_coverage_files({ projectKey: "my_proj", threshold: 50 })', {
     projectKey,
     branch,
     pullRequest,
     threshold: z.number().optional().describe('Coverage % threshold (default 80)'),
   }, measureSearch('coverage', 'coverage', 80, false)),
 
-  tool('sonar_search_duplicated_files', 'Find files with duplication above threshold.', {
+  tool('sonar_search_duplicated_files', 'Find files with duplication above threshold. Examples: sonar_search_duplicated_files({ projectKey: "my_proj" }), sonar_search_duplicated_files({ projectKey: "my_proj", threshold: 5 })', {
     projectKey,
     branch,
     pullRequest,
     threshold: z.number().optional().describe('Duplication % threshold (default 3)'),
   }, measureSearch('duplicated_lines_density', 'duplicatedLinesDensity', 3, true)),
 
-  tool('sonar_duplications', 'Get duplication blocks for a file.', {
+  tool('sonar_duplications', 'Get duplication blocks for a file. Examples: sonar_duplications({ key: "my_proj:src/file.ts" })', {
     key: componentKey,
   }, async ({ key }) => {
     requireKey(key);
@@ -511,7 +511,7 @@ const ALL_TOOLS = [
 
   // --- Composite / workflow tools ---
 
-  tool('sonar_project_report', 'One-shot project health: QG + measures + issues summary + hotspots + worst files + branches.', {
+  tool('sonar_project_report', 'One-shot project health: QG + measures + issues summary + hotspots + worst files + branches. Examples: sonar_project_report({ projectKey: "my_proj" })', {
     projectKey,
     branch,
     pullRequest,
@@ -554,7 +554,7 @@ const ALL_TOOLS = [
     };
   }),
 
-  tool('sonar_analyze_and_report', 'Run analysis, then return full project report — saves 6+ calls into 1.', {
+  tool('sonar_analyze_and_report', 'Run analysis, then return full project report — saves 6+ calls into 1. Examples: sonar_analyze_and_report({ cwd: "/path/to/project" })', {
     cwd: z.string().optional().describe('Project root'),
     token: z.string().optional().describe('Token'),
     projectKey,
@@ -570,12 +570,12 @@ const ALL_TOOLS = [
     return { scan: { success: scanResult.success, scanner: scanResult.scanner, language: scanResult.language, dashboardUrl: scanResult.dashboardUrl, ceTaskUrl: scanResult.ceTaskUrl, ceStatus: scanResult.ceStatus, hints: scanResult.hints }, report };
   }),
 
-  tool('sonar_file_issues', 'Get issues + source context for a file — saves 2 calls into 1.', {
+  tool('sonar_file_issues', 'Get issues + source context for a file — saves 2 calls into 1. Examples: sonar_file_issues({ key: "my_proj:src/file.ts" }), sonar_file_issues({ key: "my_proj:src/file.ts", from: 10, to: 50 })', {
     key: componentKey,
     from: z.number().optional().describe('Starting line'),
     to: z.number().optional().describe('Ending line'),
-    severities: z.union([z.string(), z.array(z.string())]).optional().describe('Filter by severity'),
-    types: z.union([z.string(), z.array(z.string())]).optional().describe('Filter by type'),
+    severities: z.union([z.string(), z.array(z.string())]).optional().describe('Filter by severity. Example: "CRITICAL,BLOCKER"'),
+    types: z.union([z.string(), z.array(z.string())]).optional().describe('Filter by type. Example: "BUG,CODE_SMELL"'),
   }, async ({ key, from, to, severities, types }) => {
     requireKey(key);
     const params = new URLSearchParams({ componentKeys: key, ps: '50', s: 'SEVERITY', asc: 'false' });
@@ -588,12 +588,12 @@ const ALL_TOOLS = [
     return { total: issues?.total || 0, issues: (issues?.issues || []).map(({ flows, textRange, messageFormattings, codeVariants, internalTags, ...rest }) => rest), source: source?.sources || [] };
   }),
 
-  tool('sonar_new_issues_since', 'New issues since last analysis + project context — saves 2+ calls into 1.', {
+  tool('sonar_new_issues_since', 'New issues since last analysis + project context — saves 2+ calls into 1. Examples: sonar_new_issues_since({ projectKey: "my_proj", compact: true })', {
     projectKey,
     branch,
     pullRequest,
-    severities: z.union([z.string(), z.array(z.string())]).optional().describe('Filter by severity'),
-    types: z.union([z.string(), z.array(z.string())]).optional().describe('Filter by type'),
+    severities: z.union([z.string(), z.array(z.string())]).optional().describe('Filter by severity. Example: "CRITICAL,BLOCKER"'),
+    types: z.union([z.string(), z.array(z.string())]).optional().describe('Filter by type. Example: "BUG,CODE_SMELL"'),
     limit: maxResults,
     compact: z.boolean().optional().describe('Strip verbose fields'),
   }, async ({ projectKey: pk, branch, pullRequest, severities, types, limit, compact }) => {
@@ -613,7 +613,7 @@ const ALL_TOOLS = [
     };
   }),
 
-  tool('sonar_fix_and_verify', 'Fix → rebuild → re-analyze → verify issue resolved — closes the dev loop.', {
+  tool('sonar_fix_and_verify', 'Fix → rebuild → re-analyze → verify issue resolved — closes the dev loop. Examples: sonar_fix_and_verify({ issueKey: "AX12345", cwd: "/path/to/project" })', {
     issueKey: z.string().describe('Issue key to verify (e.g. from sonar_issues or sonar_project_report)'),
     cwd: z.string().optional().describe('Project root'),
     projectKey,
@@ -636,12 +636,12 @@ const ALL_TOOLS = [
     /* c8 ignore end */
   }),
 
-  tool('sonar_file_review', 'Review a single file in one call: issues + source context + coverage + duplications. Saves 3-4 calls into 1.', {
+  tool('sonar_file_review', 'Review a single file in one call: issues + source context + coverage + duplications. Saves 3-4 calls into 1. Examples: sonar_file_review({ key: "my_proj:src/file.ts" })', {
     key: componentKey,
     from: z.number().optional().describe('Starting line'),
     to: z.number().optional().describe('Ending line'),
-    severities: z.union([z.string(), z.array(z.string())]).optional().describe('Filter issues by severity'),
-    types: z.union([z.string(), z.array(z.string())]).optional().describe('Filter issues by type'),
+    severities: z.union([z.string(), z.array(z.string())]).optional().describe('Filter issues by severity. Example: "CRITICAL,BLOCKER"'),
+    types: z.union([z.string(), z.array(z.string())]).optional().describe('Filter issues by type. Example: "BUG,CODE_SMELL"'),
   }, async ({ key, from, to, severities, types }) => {
     requireKey(key);
     const [issues, coverage, duplications] = await Promise.all([
@@ -659,7 +659,7 @@ const ALL_TOOLS = [
     };
   }),
 
-  tool('sonar_scan_workflow', 'Full scan happy path: detect project config (sources/tests/exclusions) → run analysis → return project report. Explicit params override detected defaults.', {
+  tool('sonar_scan_workflow', 'Full scan happy path: detect project config (sources/tests/exclusions) → run analysis → return project report. Explicit params override detected defaults. Examples: sonar_scan_workflow({ cwd: "/path/to/project" })', {
     cwd: z.string().optional().describe('Project root'),
     token: z.string().optional().describe('Token'),
     projectKey,
@@ -685,7 +685,7 @@ const ALL_TOOLS = [
     return { config, scan, report };
   }),
 
-  tool('sonar_call_multiple', 'Batch-execute multiple SonarQube tools in linear order in a single round-trip. Pass an ordered list of { name, args } entries; returns { total, duplicates, truncated, results: [{ order, name, ok, result|error }] }. Consecutive exact duplicates are collapsed (non-adjacent repeats are kept — state may change between them). Capped at 25 calls. Cannot call itself recursively.', {
+  tool('sonar_call_multiple', 'Batch-execute multiple SonarQube tools in linear order in a single round-trip. Pass an ordered list of { name, args } entries; returns { total, duplicates, truncated, results: [{ order, name, ok, result|error }] }. Consecutive exact duplicates are collapsed (non-adjacent repeats are kept — state may change between them). Capped at 25 calls. Cannot call itself recursively. Examples: sonar_call_multiple({ calls: [{ name: "sonar_ping", args: {} }, { name: "sonar_measures", args: { projectKey: "my_proj" } }] })', {
     calls: z.array(z.object({
       name: z.string().describe('Tool name (e.g. sonar_ping, sonar_measures)'),
       args: z.record(z.string(), z.any()).optional().describe('Arguments object for the tool (omit for no-arg tools)'),
