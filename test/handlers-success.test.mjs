@@ -896,4 +896,17 @@ describe('handler success paths', () => {
     assert.equal(res.duplicates, 0);
   });
 
+  it('sonar_call_multiple collects errors from tools that throw', async () => {
+    // sonar_quality_gate with no projectKey and no SONARQUBE_PROJECT env → resolveProjectKey throws.
+    // But in this test suite SONARQUBE_PROJECT is set to 'testproj', so we need a different approach:
+    // mock fetch to return a 500 error, which makes sonarGet throw.
+    mockFetch([() => ({ ok: false, status: 500, text: async () => 'Internal Server Error', json: async () => { throw new Error('not json'); } })]);
+    const res = await h('sonar_call_multiple')({
+      calls: [{ name: 'sonar_quality_gate', args: { projectKey: 'testproj' } }],
+    });
+    assert.equal(res.total, 1);
+    assert.equal(res.results[0].ok, false);
+    assert.ok(res.results[0].error);
+  });
+
 });

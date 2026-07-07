@@ -25,6 +25,38 @@ npm run coverage:check   # mandatory — src/ thresholds: 100% lines, 100% funcs
 - Function name `t` (i18n conflict)
 - Write a handler without a success-path test
 
+### Lessons learned (gotchas)
+
+**Pre-commit hook runs the full test suite including integration tests.**
+`.git/hooks/pre-commit` runs `typecheck → test → coverage:check`. `npm test` includes `test/integration.test.mjs`, which makes real HTTP calls against `SONARQUBE_URL` when `SONARQUBE_TOKEN` is set. If you don't want live calls during commit, unset the token: `SONARQUBE_TOKEN= git commit ...` or use `git commit --no-verify` (skips the hook entirely, not recommended).
+
+**Em-dash (—) in JSDoc `@param [optional]` breaks `tsc --noEmit`.**
+`@param {string} [sources] — foo` → `TS1127: Invalid character`. Use a regular hyphen: `@param {string} [sources] - foo`. This only affects optional-param brackets `[...]`, not required params.
+
+**Tests that bind to fixed ports (8080) hang when the port is free.**
+A test that expects `EADDRINUSE` will hang forever if the port is actually free — the server binds successfully, `assert.fail` fires, but the listening server keeps the event loop alive. Fix: accept both outcomes (bind-and-close OR EADDRINUSE), or use port `0` (OS-assigned) for deterministic tests.
+
+**Don't hardcode language-specific defaults.**
+`sonar.tests=test` broke for projects using `tests/`, `spec/`, `__tests__/`, `e2e/`. Always detect from the filesystem (`detectTestsDir`) or make the parameter optional with no default.
+
+**Scanner failures must surface stderr, not be swallowed.**
+Returning `success: true` with a dashboard URL when the scanner failed is misleading — callers can't distinguish failure from processing delay. On unmapped scanner errors, return `{ success: false, scanner, error: 'Scanner command failed', output: msg }`. Mapped errors (via `mapScannerError`) still throw.
+
+**Pin Docker images. Never use `latest`.**
+`sonarsource/sonar-scanner-cli` (implicit `latest`) causes non-reproducible builds. Pinned to `sonarsource/sonar-scanner-cli:11.1` (override via `SONARQUBE_DOCKER_IMAGE`).
+
+**CE task polling failures should not be silently swallowed.**
+`pollCeTask` throws on FAILED/CANCELED/timeout. Catching with an empty `catch {}` and leaving `ceStatus = undefined` while reporting `success: true` hides server-side analysis failures. Distinguish FAILED/CANCELED (set `success: false`) from timeout (processing may just be slow — keep `success: true`, set `ceStatus: 'TIMEOUT'`). *(Known issue: the current catch at handlers.mjs:369 is still empty — fix when touched.)*
+
+**MCP SDK has no native batch primitive.**
+`tools/call` dispatches a single tool by name. To batch, use a meta-tool that calls other handlers in-process via `ALL_TOOLS.find((t) => t.name === X).handler(args)`. This is the idiomatic pattern — all composites (`analyze_and_report`, `scan_workflow`, `sonar_call_multiple`) do this.
+
+**Batch/meta-tool dedup: consecutive-only, never Set-by-name.**
+Using a `Set` to dedup by tool name breaks legitimate repeats with different args (calling `sonar_measures` for two projects, `sonar_source` for two files). Only collapse consecutive exact-signature duplicates (same name + same args back-to-back). Non-adjacent repeats must be kept — state may change between them (one tool can change another's result).
+
+**Meta-tools using `ALL_TOOLS` (unfiltered) must be in `READ_ONLY_TOOLS`.**
+`sonar_call_multiple` can invoke any write tool (`sonar_run_analysis`, `sonar_set_issue_status`, etc.) via `ALL_TOOLS`. If it weren't in `READ_ONLY_TOOLS`, read-only deployments would expose write tools through the meta-tool backdoor.
+
 ---
 
 ## Stack
@@ -226,3 +258,4 @@ See `RELEASE.md` for the full step-by-step.
 5. Run `sonar-scanner -Dsonar.token=...` for dogfood analysis
 6. Check quality gate via `sonar_quality_gate` tool
 7. **Never tag or push a version bump on main** — that only happens on release branches
+8. **Pre-commit hook gotcha**: `.git/hooks/pre-commit` runs the full suite including integration tests. If `SONARQUBE_TOKEN` is set, integration tests make live HTTP calls. To commit without live calls: `SONARQUBE_TOKEN= git commit ...`

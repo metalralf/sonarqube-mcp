@@ -429,7 +429,7 @@ export const detectSourceLanguages = (dir, sources = 'src') => {
     }
   };
   walk(root, 0);
-  return [...langs].sort();
+  return [...langs].sort((a, b) => a.localeCompare(b));
 };
 
 /** @type {string[]} candidate test directory names in priority order */

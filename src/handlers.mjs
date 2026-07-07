@@ -5,6 +5,30 @@ import { join } from 'node:path';
 import { z } from 'zod';
 import { tool, projectKey, componentKey, maxResults, encode, requireKey, componentParams, measureSearch, parseIssueFacets, getHostUrl, filterTools, sonarGet, sonarPost, sonarCheckServer, orgQuery, resolveProjectKey, maybeTruncated, detectLanguage, buildSonarProps, hasDocker, getScannerTimeout, getSourceContext, LANG_CONFIGS, autoBuild, mapScannerError, buildScannerHints, extractCeTaskUrl, pollCeTask, buildScannerArgs, runScanner, detectProjectConfig } from './helpers.mjs';
 
+/**
+ * Execute a single tool call for sonar_call_multiple.
+ * @param {{ name: string, args?: Record<string, any> }} call
+ * @param {number} order — 1-based position in the original input
+ * @returns {Promise<{ result: { order: number, name: string, ok: boolean, result?: any, error?: string }, ok: boolean }>}
+ */
+const executeCall = async (call, order) => {
+  const name = call.name;
+  const args = call.args || {};
+  if (name === 'sonar_call_multiple') {
+    return { result: { order, name, ok: false, error: 'Recursive sonar_call_multiple is not allowed' }, ok: false };
+  }
+  const t = ALL_TOOLS.find((x) => x.name === name);
+  if (!t) {
+    return { result: { order, name, ok: false, error: `Unknown tool: ${name}` }, ok: false };
+  }
+  try {
+    const result = await t.handler(args);
+    return { result: { order, name, ok: true, result }, ok: true };
+  } catch (e) {
+    return { result: { order, name, ok: false, error: /** @type {Error} */ (e).message }, ok: false };
+  }
+};
+
 const ALL_TOOLS = [
   tool('sonar_projects_create', 'Create a new project in SonarQube. Requires admin permissions.', {
     projectKey: z.string().describe('Key for the new project (e.g. my_new_project)'),
@@ -598,7 +622,7 @@ const ALL_TOOLS = [
     try { config = await ALL_TOOLS.find((t) => t.name === 'sonar_detect_project_config').handler({ projectRoot: dir }); }
     catch { /* detection failed — proceed with explicit params only */ }
     const mergedSources = sources || config?.sources;
-    const mergedTests = tests !== undefined ? tests : config?.tests;
+    const mergedTests = tests === undefined ? config?.tests : tests;
     // 2. Run analysis with merged params.
     /* c8 ignore next 4 */
     const scan = await ALL_TOOLS.find((t) => t.name === 'sonar_run_analysis').handler({ cwd: dir, token, projectKey: pk, host, sources: mergedSources, tests: mergedTests, language, scanner: scannerMethod });
@@ -624,30 +648,12 @@ const ALL_TOOLS = [
     let prevSig = '';
     for (let i = 0; i < input.length; i++) {
       const c = input[i];
-      const name = c.name;
-      const args = c.args || {};
-      const sig = name + '|' + JSON.stringify(args);
+      const sig = c.name + '|' + JSON.stringify(c.args || {});
       if (sig === prevSig) { duplicates++; continue; }
       prevSig = sig;
-      const order = i + 1;
-      if (name === 'sonar_call_multiple') {
-        results.push({ order, name, ok: false, error: 'Recursive sonar_call_multiple is not allowed' });
-        if (stop) break;
-        continue;
-      }
-      const t = ALL_TOOLS.find((x) => x.name === name);
-      if (!t) {
-        results.push({ order, name, ok: false, error: `Unknown tool: ${name}` });
-        if (stop) break;
-        continue;
-      }
-      try {
-        const result = await t.handler(args);
-        results.push({ order, name, ok: true, result });
-      } catch (e) {
-        results.push({ order, name, ok: false, error: /** @type {Error} */ (e).message });
-        if (stop) break;
-      }
+      const entry = await executeCall(c, i + 1);
+      results.push(entry.result);
+      if (stop && !entry.ok) break;
     }
     return { total: results.length, duplicates, truncated, maxCalls: MAX_CALLS, results };
   }),
