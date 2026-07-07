@@ -9,8 +9,18 @@ export const getToken = () => env('SONARQUBE_TOKEN');
 /** @returns {number} */
 const getApiTimeout = () => Number.parseInt(env('SONARQUBE_API_TIMEOUT', '5000'), 10);
 
-/** @param {string} m */
-const log = (m) => process.stderr.write(`[sonarqube-mcp] ${m}\n`);
+const LOG_LEVELS = { debug: 0, info: 1, warn: 2, error: 3 };
+const CURRENT_LOG_LEVEL = LOG_LEVELS[env('SONARQUBE_LOG_LEVEL', 'info').toLowerCase()] ?? 1;
+
+/**
+ * Log a message with a level prefix. Only messages at or above SONARQUBE_LOG_LEVEL are printed.
+ * @param {'debug'|'info'|'warn'|'error'} level
+ * @param {string} m
+ */
+const log = (level, m) => {
+  if ((LOG_LEVELS[level] ?? 99) < CURRENT_LOG_LEVEL) return;
+  process.stderr.write(`[sonarqube-mcp][${level.toUpperCase()}] ${m}\n`);
+};
 
 /** @returns {string} */
 const authHeader = () => {

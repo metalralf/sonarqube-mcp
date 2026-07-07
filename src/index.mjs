@@ -26,5 +26,5 @@ if (transport === 'http' || transport === 'https') {
 /* c8 ignore stop */
   await server.connect(new StdioServerTransport());
   const defaultProject = process.env.SONARQUBE_PROJECT ?? '';
-  log(`ready — host=${getHostUrl()} project=${defaultProject || '(none)'} token=${getToken() ? 'set' : 'MISSING'}`);
+  log('info', `ready — host=${getHostUrl()} project=${defaultProject || '(none)'} token=${getToken() ? 'set' : 'MISSING'}`);
 }
