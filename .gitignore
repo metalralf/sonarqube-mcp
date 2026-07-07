@@ -18,9 +18,12 @@ coverage/
 coverage-all/
 
 # === Tool artifacts ===
-.code-review-graph/      # code-review-graph MCP server knowledge graph
-.playwright-mcp/         # Playwright MCP server data
-ideas/                   # Internal design docs, not for distribution
+# code-review-graph MCP server knowledge graph
+.code-review-graph/
+# Playwright MCP server data
+.playwright-mcp/
+# Internal design docs, not for distribution
+ideas/
 
 # === Research notes ===
 COVERAGE-RESEARCH.md
