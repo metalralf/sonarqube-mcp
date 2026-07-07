@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.6.1 (2026-07-07)
+
+- Fix S2871: add compare function to `sort()` in `detectSourceLanguages` (use `localeCompare`)
+- Fix S3776: extract `executeCall()` helper from `sonar_call_multiple` — cognitive complexity 19→8
+- Fix S7735: swap negated ternary in `sonar_scan_workflow` (`tests === undefined ? ... : ...`)
+- Fix S3358: replace nested ternary with `localeCompare` in sort comparator
+- Security hotspot S4036: reviewed as SAFE (`command -v git` resolves to absolute path)
+- Add AGENTS.md "Lessons learned (gotchas)" section (10 gotchas from 1.6.0 development)
+- Quality Gate now passing: coverage 98.9%, duplications 2.51%, hotspots 100% reviewed, 0 violations
+
 ## 1.6.0 (2026-07-06)
 
 - **`sonar_detect_project_config`**: inspect a project directory and return a suggested SonarQube analysis configuration (sources, tests, exclusions, coverage report, build tool, detected languages). Cross-references the connected server's `list_languages` API. 10 detection helpers added to `helpers.mjs` (gitignore parsing, extension→language map, coverage/build-tool detection).
