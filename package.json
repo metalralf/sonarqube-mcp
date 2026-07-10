@@ -15,13 +15,16 @@
     "test": "node --test",
     "coverage": "c8 node --test",
     "coverage:check": "c8 --reporter=json node --test 2>/dev/null && c8 check-coverage --exclude 'test/**' --exclude 'coverage-all/**' --lines 100 --functions 100 --branches 85",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "fmt": "biome check --write src/ test/",
+    "lint": "biome check src/ test/"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@biomejs/biome": "2.5.3",
     "@types/node": "^25.9.3",
     "c8": "^11.0.0",
     "sonar-scanner": "^3.1.0",
