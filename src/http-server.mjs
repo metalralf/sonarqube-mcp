@@ -31,7 +31,11 @@ const sendJson = (res, status, data, headers) => {
 const parseJson = async (req) => {
   let body = '';
   for await (const chunk of req) body += chunk;
-  try { return JSON.parse(body); } catch { return null; }
+  try {
+    return JSON.parse(body);
+  } catch {
+    return null;
+  }
 };
 
 /**
@@ -44,7 +48,10 @@ const parseJson = async (req) => {
  * @param {number} port
  */
 const handleRequest = async (req, res, tools, toolMap, schemas, host, port) => {
-  /* c8 ignore next */ const url = new URL(req.url || '/', `http://${host}:${port}`);
+  /* c8 ignore next */ const url = new URL(
+    req.url || '/',
+    `http://${host}:${port}`,
+  );
   const corsHeaders = cors(process.env.SONARQUBE_HTTP_ALLOWED_ORIGINS || '*');
 
   if (req.method === 'OPTIONS') {
@@ -58,12 +65,19 @@ const handleRequest = async (req, res, tools, toolMap, schemas, host, port) => {
 
   /* c8 ignore next 2 */
   if (url.pathname === '/health' && req.method === 'GET') {
-    send(200, { status: 'ok', host: getHostUrl(), token: getToken() ? 'set' : 'MISSING' });
+    send(200, {
+      status: 'ok',
+      host: getHostUrl(),
+      token: getToken() ? 'set' : 'MISSING',
+    });
     return;
   }
 
   if (url.pathname === '/tools' && req.method === 'GET') {
-    send(200, tools.map((t) => ({ name: t.name, description: t.description })));
+    send(
+      200,
+      tools.map((t) => ({ name: t.name, description: t.description })),
+    );
     return;
   }
 
@@ -85,18 +99,31 @@ const handleRequest = async (req, res, tools, toolMap, schemas, host, port) => {
  * @param {Map<string, any>} toolMap
  * @param {Record<string, import('zod').ZodObject<any>>} schemas
  */
-const handleToolExecution = async (toolName, req, res, send, toolMap, schemas) => {
+const handleToolExecution = async (
+  toolName,
+  req,
+  res,
+  send,
+  toolMap,
+  schemas,
+) => {
   const tool = toolMap.get(toolName);
-  if (!tool) { send(404, { error: `Unknown tool: ${toolName}` }); return; }
+  if (!tool) {
+    send(404, { error: `Unknown tool: ${toolName}` });
+    return;
+  }
   const body = await parseJson(req);
-  if (!body) { send(400, { error: 'Invalid JSON body' }); return; }
+  if (!body) {
+    send(400, { error: 'Invalid JSON body' });
+    return;
+  }
   try {
     const params = schemas[toolName].parse(body);
     const data = await tool.handler(params);
     /* c8 ignore next */
     send(200, typeof data === 'string' ? { result: data } : data);
   } catch (e) {
-    send(400, { error: (/** @type {Error} */ (e)).message });
+    send(400, { error: /** @type {Error} */ (e).message });
   }
 };
 
@@ -120,8 +147,13 @@ export const startHttpServer = async (tools) => {
 
   return new Promise((resolve, reject) => {
     server.listen(port, host, () => {
-      const addr = /** @type {import('node:net').AddressInfo} */ (server.address());
-      log('info', `HTTP server listening on http://${addr.address}:${addr.port}`);
+      const addr = /** @type {import('node:net').AddressInfo} */ (
+        server.address()
+      );
+      log(
+        'info',
+        `HTTP server listening on http://${addr.address}:${addr.port}`,
+      );
       log('info', `  GET  /health          — health check`);
       log('info', `  GET  /tools           — list tools`);
       log('info', `  POST /tools/:name     — execute a tool`);

@@ -59,13 +59,21 @@ describe('tools', () => {
       assert.ok(tool.name, `missing name`);
       assert.ok(tool.description, `missing description: ${tool.name}`);
       assert.ok(tool.schema, `missing schema: ${tool.name}`);
-      assert.equal(typeof tool.handler, 'function', `handler not a function: ${tool.name}`);
+      assert.equal(
+        typeof tool.handler,
+        'function',
+        `handler not a function: ${tool.name}`,
+      );
     }
   });
 
   it('tool names use snake_case prefix', () => {
     for (const tool of TOOL_CONFIGS) {
-      assert.match(tool.name, /^sonar_/, `${tool.name} should start with sonar_`);
+      assert.match(
+        tool.name,
+        /^sonar_/,
+        `${tool.name} should start with sonar_`,
+      );
     }
   });
 

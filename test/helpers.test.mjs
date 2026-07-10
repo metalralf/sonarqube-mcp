@@ -1,17 +1,40 @@
 import assert from 'node:assert/strict';
-import { describe, it, before, after, beforeEach } from 'node:test';
-import { readdirSync, rmSync, mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import {
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { after, before, beforeEach, describe, it } from 'node:test';
 import { z } from 'zod';
-import { parseIssueFacets, componentParams, requireKey, encode } from '../src/helpers.mjs';
+import {
+  componentParams,
+  encode,
+  parseIssueFacets,
+  requireKey,
+} from '../src/helpers.mjs';
 
 describe('helpers', () => {
   it('parseIssueFacets extracts non-zero counts', () => {
     const input = {
       facets: [
-        { property: 'severities', values: [{ val: 'INFO', count: 3 }, { val: 'MINOR', count: 0 }] },
-        { property: 'types', values: [{ val: 'CODE_SMELL', count: 3 }, { val: 'BUG', count: 0 }] },
+        {
+          property: 'severities',
+          values: [
+            { val: 'INFO', count: 3 },
+            { val: 'MINOR', count: 0 },
+          ],
+        },
+        {
+          property: 'types',
+          values: [
+            { val: 'CODE_SMELL', count: 3 },
+            { val: 'BUG', count: 0 },
+          ],
+        },
       ],
     };
     const { bySeverity, byType } = parseIssueFacets(input);
@@ -33,9 +56,7 @@ describe('helpers', () => {
 
   it('parseIssueFacets handles unknown facet properties gracefully', () => {
     const input = {
-      facets: [
-        { property: 'unknown_prop', values: [{ val: 'X', count: 5 }] },
-      ],
+      facets: [{ property: 'unknown_prop', values: [{ val: 'X', count: 5 }] }],
     };
     const { bySeverity, byType } = parseIssueFacets(input);
     assert.deepEqual(bySeverity, {});
@@ -43,7 +64,11 @@ describe('helpers', () => {
   });
 
   it('componentParams creates params with key only', () => {
-    const params = componentParams('my-project:src/file.ts', undefined, undefined);
+    const params = componentParams(
+      'my-project:src/file.ts',
+      undefined,
+      undefined,
+    );
     assert.equal(params.get('key'), 'my-project:src/file.ts');
     assert.equal(params.get('from'), null);
     assert.equal(params.get('to'), null);
@@ -103,13 +128,28 @@ describe('helpers — measureSearch', () => {
     globalThis.fetch = async (url) => {
       assert.match(url, /measures\/search/);
       return {
-        ok: true, status: 200, text: async () => JSON.stringify({
-          measures: [
-            { metric: 'coverage', component: 'testproj:src/a.js', value: '75.0' },
-            { metric: 'coverage', component: 'testproj:src/b.js', value: '90.0' },
-            { metric: 'coverage', component: 'testproj:src/c.js', value: '50.0' },
-          ],
-        }),
+        ok: true,
+        status: 200,
+        text: async () =>
+          JSON.stringify({
+            measures: [
+              {
+                metric: 'coverage',
+                component: 'testproj:src/a.js',
+                value: '75.0',
+              },
+              {
+                metric: 'coverage',
+                component: 'testproj:src/b.js',
+                value: '90.0',
+              },
+              {
+                metric: 'coverage',
+                component: 'testproj:src/c.js',
+                value: '50.0',
+              },
+            ],
+          }),
       };
     };
     const result = await handler({ projectKey: 'testproj', threshold: 80 });
@@ -123,16 +163,36 @@ describe('helpers — measureSearch', () => {
 
   it('measureSearch returns sorted files above threshold (descend)', async () => {
     const { measureSearch } = await import('../src/helpers.mjs');
-    const handler = measureSearch('duplicated_lines_density', 'duplicatedLinesDensity', 3, true);
+    const handler = measureSearch(
+      'duplicated_lines_density',
+      'duplicatedLinesDensity',
+      3,
+      true,
+    );
     origFetch = globalThis.fetch;
     globalThis.fetch = async () => ({
-      ok: true, status: 200, text: async () => JSON.stringify({
-        measures: [
-          { metric: 'duplicated_lines_density', component: 'testproj:src/a.js', value: '5.0' },
-          { metric: 'duplicated_lines_density', component: 'testproj:src/b.js', value: '2.0' },
-          { metric: 'duplicated_lines_density', component: 'testproj:src/c.js', value: '10.0' },
-        ],
-      }),
+      ok: true,
+      status: 200,
+      text: async () =>
+        JSON.stringify({
+          measures: [
+            {
+              metric: 'duplicated_lines_density',
+              component: 'testproj:src/a.js',
+              value: '5.0',
+            },
+            {
+              metric: 'duplicated_lines_density',
+              component: 'testproj:src/b.js',
+              value: '2.0',
+            },
+            {
+              metric: 'duplicated_lines_density',
+              component: 'testproj:src/c.js',
+              value: '10.0',
+            },
+          ],
+        }),
     });
     const result = await handler({ projectKey: 'testproj', threshold: 3 });
     assert.equal(result.files.length, 2);
@@ -146,7 +206,9 @@ describe('helpers — measureSearch', () => {
     const handler = measureSearch('coverage', 'coverage', 80, false);
     origFetch = globalThis.fetch;
     globalThis.fetch = async () => ({
-      ok: true, status: 200, text: async () => JSON.stringify({ measures: [] }),
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({ measures: [] }),
     });
     const result = await handler({ projectKey: 'testproj' });
     assert.equal(result.threshold, 80);
@@ -158,13 +220,20 @@ describe('helpers — measureSearch', () => {
     const handler = measureSearch('coverage', 'coverage', 80, false);
     origFetch = globalThis.fetch;
     globalThis.fetch = async () => ({
-      ok: true, status: 200, text: async () => JSON.stringify({
-        measures: [
-          { metric: 'coverage', component: 'testproj', value: '100.0' },
-          { metric: 'coverage', component: 'testproj:src/a.js', value: '95.0' },
-          { metric: 'coverage', component: 'testproj:src/b.js' },
-        ],
-      }),
+      ok: true,
+      status: 200,
+      text: async () =>
+        JSON.stringify({
+          measures: [
+            { metric: 'coverage', component: 'testproj', value: '100.0' },
+            {
+              metric: 'coverage',
+              component: 'testproj:src/a.js',
+              value: '95.0',
+            },
+            { metric: 'coverage', component: 'testproj:src/b.js' },
+          ],
+        }),
     });
     const result = await handler({ projectKey: 'testproj', threshold: 80 });
     assert.equal(result.total, 1);
@@ -193,7 +262,12 @@ describe('helpers — language detection', () => {
   let cleanup;
 
   before(async () => {
-    const [{ mkdtempSync, writeFileSync }, { join: joinPath }, { tmpdir }] = await Promise.all([import('node:fs'), import('node:path'), import('node:os')]);
+    const [{ mkdtempSync, writeFileSync }, { join: joinPath }, { tmpdir }] =
+      await Promise.all([
+        import('node:fs'),
+        import('node:path'),
+        import('node:os'),
+      ]);
     tmpDir = mkdtempSync(joinPath(tmpdir(), 'lang-test-'));
     write = (name, content) => writeFileSync(joinPath(tmpDir, name), content);
   });
@@ -204,7 +278,8 @@ describe('helpers — language detection', () => {
 
   beforeEach(() => {
     try {
-      for (const f of readdirSync(tmpDir)) rmSync(join(tmpDir, f), { recursive: true, force: true });
+      for (const f of readdirSync(tmpDir))
+        rmSync(join(tmpDir, f), { recursive: true, force: true });
     } catch {}
   });
 
@@ -216,7 +291,10 @@ describe('helpers — language detection', () => {
 
   it('detects typescript from package.json with typescript dep', async () => {
     const { detectLanguage } = await import('../src/helpers.mjs');
-    write('package.json', '{"name":"test","devDependencies":{"typescript":"^5.0"}}');
+    write(
+      'package.json',
+      '{"name":"test","devDependencies":{"typescript":"^5.0"}}',
+    );
     assert.equal(detectLanguage(tmpDir), 'typescript');
   });
 
@@ -246,7 +324,10 @@ describe('helpers — language detection', () => {
 
   it('detects kotlin from pom.xml with kotlin ref', async () => {
     const { detectLanguage } = await import('../src/helpers.mjs');
-    write('pom.xml', '<project><groupId>com.test</groupId><artifactId>kotlin-app</artifactId></project>');
+    write(
+      'pom.xml',
+      '<project><groupId>com.test</groupId><artifactId>kotlin-app</artifactId></project>',
+    );
     assert.equal(detectLanguage(tmpDir), 'kotlin');
   });
 
@@ -279,7 +360,9 @@ describe('helpers — buildSonarProps', () => {
   });
 
   it('generates Python-specific properties', async () => {
-    const { buildSonarProps, LANG_CONFIGS } = await import('../src/helpers.mjs');
+    const { buildSonarProps, LANG_CONFIGS } = await import(
+      '../src/helpers.mjs'
+    );
     const props = buildSonarProps('p', 'http://sq:9000', 'src', 'python');
     assert.match(props, /sonar\.exclusions=venv/);
     assert.match(props, /sonar\.python\.coverage\.reportPaths/);
@@ -316,7 +399,9 @@ describe('helpers — scanner utilities', () => {
 
   it('mapScannerError maps missing binaries error', async () => {
     const { mapScannerError } = await import('../src/helpers.mjs');
-    const msg = mapScannerError("No files nor directories matching 'build/libs/**/*.jar'");
+    const msg = mapScannerError(
+      "No files nor directories matching 'build/libs/**/*.jar'",
+    );
     assert.match(msg, /Build the project/);
   });
 
@@ -334,7 +419,10 @@ describe('helpers — scanner utilities', () => {
 
   it('buildScannerHints returns java blame hint', async () => {
     const { buildScannerHints } = await import('../src/helpers.mjs');
-    const hints = buildScannerHints('Missing blame information for the following', 'java');
+    const hints = buildScannerHints(
+      'Missing blame information for the following',
+      'java',
+    );
     assert.equal(hints.length, 1);
     assert.match(hints[0], /blame/);
   });
@@ -347,14 +435,18 @@ describe('helpers — scanner utilities', () => {
 
   it('extractCeTaskUrl extracts URL from output', async () => {
     const { extractCeTaskUrl } = await import('../src/helpers.mjs');
-    const output = 'More about the report processing at /api/ce/task?id=abc123-def456\nANALYSIS SUCCESSFUL';
+    const output =
+      'More about the report processing at /api/ce/task?id=abc123-def456\nANALYSIS SUCCESSFUL';
     const url = extractCeTaskUrl(output, 'http://sq:9000');
     assert.equal(url, 'http://sq:9000/api/ce/task?id=abc123-def456');
   });
 
   it('extractCeTaskUrl returns undefined when no match', async () => {
     const { extractCeTaskUrl } = await import('../src/helpers.mjs');
-    assert.equal(extractCeTaskUrl('ANALYSIS SUCCESSFUL', 'http://sq:9000'), undefined);
+    assert.equal(
+      extractCeTaskUrl('ANALYSIS SUCCESSFUL', 'http://sq:9000'),
+      undefined,
+    );
   });
 
   it('getDockerImage defaults to pinned version', async () => {
@@ -395,12 +487,19 @@ describe('helpers — pollCeTask', () => {
     origFetch = globalThis.fetch;
     globalThis.fetch = async (url, opts) => {
       if (idx < responses.length) return responses[idx++](url, opts);
-      return { ok: true, status: 200, text: async () => '{}', json: async () => ({}) };
+      return {
+        ok: true,
+        status: 200,
+        text: async () => '{}',
+        json: async () => ({}),
+      };
     };
   };
 
   const jsonOk = (data) => ({
-    ok: true, status: 200, text: async () => JSON.stringify(data),
+    ok: true,
+    status: 200,
+    text: async () => JSON.stringify(data),
     json: async () => data,
   });
 
@@ -417,22 +516,35 @@ describe('helpers — pollCeTask', () => {
       () => jsonOk({ task: { status: 'IN_PROGRESS' } }),
       () => jsonOk({ task: { status: 'SUCCESS' } }),
     ]);
-    const result = await pollCeTask('http://sq:9000/api/ce/task?id=abc', 30000, 10);
+    const result = await pollCeTask(
+      'http://sq:9000/api/ce/task?id=abc',
+      30000,
+      10,
+    );
     assert.equal(result.task.status, 'SUCCESS');
     globalThis.fetch = origFetch;
   });
 
   it('throws on FAILED status', async () => {
     const { pollCeTask } = await import('../src/helpers.mjs');
-    mockFetch([() => jsonOk({ task: { status: 'FAILED', errorMessage: 'Build failed' } })]);
-    await assert.rejects(() => pollCeTask('http://sq:9000/api/ce/task?id=abc', 5000), /failed/);
+    mockFetch([
+      () =>
+        jsonOk({ task: { status: 'FAILED', errorMessage: 'Build failed' } }),
+    ]);
+    await assert.rejects(
+      () => pollCeTask('http://sq:9000/api/ce/task?id=abc', 5000),
+      /failed/,
+    );
     globalThis.fetch = origFetch;
   });
 
   it('throws on CANCELED status', async () => {
     const { pollCeTask } = await import('../src/helpers.mjs');
     mockFetch([() => jsonOk({ task: { status: 'CANCELED' } })]);
-    await assert.rejects(() => pollCeTask('http://sq:9000/api/ce/task?id=abc', 5000), /canceled/);
+    await assert.rejects(
+      () => pollCeTask('http://sq:9000/api/ce/task?id=abc', 5000),
+      /canceled/,
+    );
     globalThis.fetch = origFetch;
   });
 });
@@ -443,7 +555,15 @@ describe('helpers — detectJavaVersion', () => {
   let write;
 
   before(async () => {
-    const [{ mkdtempSync, writeFileSync, rmSync, readdirSync }, { join: joinPath }, { tmpdir }] = await Promise.all([import('node:fs'), import('node:path'), import('node:os')]);
+    const [
+      { mkdtempSync, writeFileSync, rmSync, readdirSync },
+      { join: joinPath },
+      { tmpdir },
+    ] = await Promise.all([
+      import('node:fs'),
+      import('node:path'),
+      import('node:os'),
+    ]);
     tmpDir = mkdtempSync(joinPath(tmpdir(), 'jv-test-'));
     write = (name, content) => writeFileSync(joinPath(tmpDir, name), content);
   });
@@ -454,7 +574,10 @@ describe('helpers — detectJavaVersion', () => {
   });
 
   beforeEach(() => {
-    try { for (const f of readdirSync(tmpDir)) rmSync(tmpDir + '/' + f, { recursive: true, force: true }); } catch {}
+    try {
+      for (const f of readdirSync(tmpDir))
+        rmSync(tmpDir + '/' + f, { recursive: true, force: true });
+    } catch {}
   });
 
   it('detects java version from gradle sourceCompatibility', async () => {
@@ -471,7 +594,10 @@ describe('helpers — detectJavaVersion', () => {
 
   it('detects java version from pom.xml java.version', async () => {
     const { detectJavaVersion } = await import('../src/helpers.mjs');
-    write('pom.xml', '<properties><java.version>17</java.version></properties>');
+    write(
+      'pom.xml',
+      '<properties><java.version>17</java.version></properties>',
+    );
     assert.equal(detectJavaVersion(tmpDir), 17);
   });
 
@@ -510,10 +636,24 @@ describe('helpers — project config detection', () => {
   let mkdirp;
 
   before(async () => {
-    const [{ mkdtempSync, writeFileSync, mkdirSync, rmSync, readdirSync }, { join: joinPath }, { tmpdir }] = await Promise.all([import('node:fs'), import('node:path'), import('node:os')]);
+    const [
+      { mkdtempSync, writeFileSync, mkdirSync, rmSync, readdirSync },
+      { join: joinPath },
+      { tmpdir },
+    ] = await Promise.all([
+      import('node:fs'),
+      import('node:path'),
+      import('node:os'),
+    ]);
     tmpDir = mkdtempSync(joinPath(tmpdir(), 'pcfg-test-'));
-    write = (name, content = '') => { mkdirSync(joinPath(tmpDir, ...name.split('/').slice(0, -1)), { recursive: true }); writeFileSync(joinPath(tmpDir, name), content); };
-    mkdirp = (path) => mkdirSync(joinPath(tmpDir, ...path.split('/')), { recursive: true });
+    write = (name, content = '') => {
+      mkdirSync(joinPath(tmpDir, ...name.split('/').slice(0, -1)), {
+        recursive: true,
+      });
+      writeFileSync(joinPath(tmpDir, name), content);
+    };
+    mkdirp = (path) =>
+      mkdirSync(joinPath(tmpDir, ...path.split('/')), { recursive: true });
   });
 
   after(async () => {
@@ -522,7 +662,10 @@ describe('helpers — project config detection', () => {
   });
 
   beforeEach(() => {
-    try { for (const f of readdirSync(tmpDir)) rmSync(join(tmpDir, f), { recursive: true, force: true }); } catch {}
+    try {
+      for (const f of readdirSync(tmpDir))
+        rmSync(join(tmpDir, f), { recursive: true, force: true });
+    } catch {}
   });
 
   it('detectSourceLanguages inventories extensions under src', async () => {

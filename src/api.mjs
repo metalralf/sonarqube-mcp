@@ -1,16 +1,20 @@
 // @ts-check
-const env = (/** @type {string} */ name, /** @type {string} */ fallback = '') => /** @type {string} */ (process.env[name] ?? fallback);
+const env = (/** @type {string} */ name, /** @type {string} */ fallback = '') =>
+  /** @type {string} */ (process.env[name] ?? fallback);
 
 /** @returns {string} */
-export const getHostUrl = () => env('SONARQUBE_URL', 'http://localhost:9000').replace(/\/$/, '');
+export const getHostUrl = () =>
+  env('SONARQUBE_URL', 'http://localhost:9000').replace(/\/$/, '');
 /** @returns {string} */
 export const getToken = () => env('SONARQUBE_TOKEN');
 
 /** @returns {number} */
-const getApiTimeout = () => Number.parseInt(env('SONARQUBE_API_TIMEOUT', '5000'), 10);
+const getApiTimeout = () =>
+  Number.parseInt(env('SONARQUBE_API_TIMEOUT', '5000'), 10);
 
 const LOG_LEVELS = { debug: 0, info: 1, warn: 2, error: 3 };
-const CURRENT_LOG_LEVEL = LOG_LEVELS[env('SONARQUBE_LOG_LEVEL', 'info').toLowerCase()] ?? 1;
+const CURRENT_LOG_LEVEL =
+  LOG_LEVELS[env('SONARQUBE_LOG_LEVEL', 'info').toLowerCase()] ?? 1;
 
 /**
  * Log a message with a level prefix. Only messages at or above SONARQUBE_LOG_LEVEL are printed.
@@ -36,7 +40,11 @@ const instanceHint = () => {
   const url = getHostUrl();
   try {
     const { hostname } = new URL(url);
-    if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '0.0.0.0') {
+    if (
+      hostname === 'localhost' ||
+      hostname === '127.0.0.1' ||
+      hostname === '0.0.0.0'
+    ) {
       return `Is SonarQube running? Start it with:\n  docker run -d --name sonarqube -p 9000:9000 sonarqube:community\n\nOr check your SONARQUBE_URL=${url}`;
     }
     return `Is the server at ${url} reachable? Check network, firewall, or DNS.`;
@@ -57,12 +65,19 @@ const instanceHint = () => {
 /** @returns {Promise<ServerHealth>} */
 export const sonarCheckServer = async () => {
   try {
-    const res = await fetch(`${getHostUrl()}/api/system/health`, { headers: { authorization: authHeader() }, signal: AbortSignal.timeout(getApiTimeout()) });
+    const res = await fetch(`${getHostUrl()}/api/system/health`, {
+      headers: { authorization: authHeader() },
+      signal: AbortSignal.timeout(getApiTimeout()),
+    });
     if (!res.ok) return { reachable: true, status: res.status };
     const body = await res.json();
-    return { reachable: true, health: (/** @type {any} */ (body)).health };
+    return { reachable: true, health: /** @type {any} */ (body).health };
   } catch (/** @type {unknown} */ e) {
-    return { reachable: false, error: (/** @type {Error} */ (e)).message, hint: instanceHint() };
+    return {
+      reachable: false,
+      error: /** @type {Error} */ (e).message,
+      hint: instanceHint(),
+    };
   }
 };
 
@@ -75,14 +90,22 @@ export const sonarPost = async (path, body) => {
   if (!getToken()) throw new Error('SONARQUBE_TOKEN is not set');
   const res = await fetch(`${getHostUrl()}${path}`, {
     method: 'POST',
-    headers: { authorization: authHeader(), 'Content-Type': 'application/x-www-form-urlencoded' },
+    headers: {
+      authorization: authHeader(),
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
     body,
   });
   const text = await res.text();
   let parsed;
-  try { parsed = JSON.parse(text); } catch { parsed = text; }
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    parsed = text;
+  }
   if (!res.ok) {
-    const detail = typeof parsed === 'object' ? JSON.stringify(parsed) : String(parsed);
+    const detail =
+      typeof parsed === 'object' ? JSON.stringify(parsed) : String(parsed);
     throw new Error(`SonarQube ${res.status}: ${detail}`);
   }
   return /** @type {any} */ (parsed);
@@ -96,17 +119,28 @@ export const sonarGet = async (path) => {
   if (!getToken()) throw new Error('SONARQUBE_TOKEN is not set');
   let res;
   try {
-    res = await fetch(`${getHostUrl()}${path}`, { headers: { authorization: authHeader() } });
+    res = await fetch(`${getHostUrl()}${path}`, {
+      headers: { authorization: authHeader() },
+    });
   } catch (/** @type {unknown} */ e) {
-    throw new Error(`Cannot reach SonarQube at ${getHostUrl()} (${(/** @type {Error} */ (e)).message}).\n\n${instanceHint()}`);
+    throw new Error(
+      `Cannot reach SonarQube at ${getHostUrl()} (${/** @type {Error} */ (e).message}).\n\n${instanceHint()}`,
+    );
   }
   const text = await res.text();
   let body;
-  try { body = JSON.parse(text); } catch { body = text; }
+  try {
+    body = JSON.parse(text);
+  } catch {
+    body = text;
+  }
   if (!res.ok) {
-    const detail = typeof body === 'object' ? JSON.stringify(body) : String(body);
+    const detail =
+      typeof body === 'object' ? JSON.stringify(body) : String(body);
     if (res.status === 403 && path.startsWith('/api/hotspots/')) {
-      throw new Error('SonarQube 403: security hotspots require a User token (squ_ prefix) with Browse permission. Project/Global analysis tokens (sqp_/sqa_) cannot read hotspots.');
+      throw new Error(
+        'SonarQube 403: security hotspots require a User token (squ_ prefix) with Browse permission. Project/Global analysis tokens (sqp_/sqa_) cannot read hotspots.',
+      );
     }
     throw new Error(`SonarQube ${res.status}: ${detail}`);
   }
@@ -127,7 +161,9 @@ export const resolveProjectKey = (args = {}) => {
   const defaultProject = env('SONARQUBE_PROJECT');
   if (args.projectKey) return args.projectKey;
   if (defaultProject) return defaultProject;
-  throw new Error('projectKey required — set SONARQUBE_PROJECT or pass projectKey');
+  throw new Error(
+    'projectKey required — set SONARQUBE_PROJECT or pass projectKey',
+  );
 };
 
 /**
@@ -136,7 +172,10 @@ export const resolveProjectKey = (args = {}) => {
  * @returns {T & { _truncated?: boolean }}
  */
 export const maybeTruncated = (data) => {
-  const d = /** @type {T & { paging?: { total: number; pageSize: number }; _truncated?: boolean }} */ (data);
+  const d =
+    /** @type {T & { paging?: { total: number; pageSize: number }; _truncated?: boolean }} */ (
+      data
+    );
   if (d.paging) d._truncated = d.paging.total > d.paging.pageSize;
   return d;
 };

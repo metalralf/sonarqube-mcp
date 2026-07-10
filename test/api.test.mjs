@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { describe, it, before, after } from 'node:test';
+import { after, before, describe, it } from 'node:test';
 
 describe('api', () => {
   /** @type {any} */
@@ -89,7 +89,9 @@ describe('api', () => {
   it('sonarGet returns plain text when JSON parse fails', async () => {
     origFetch = globalThis.fetch;
     globalThis.fetch = async () => ({
-      ok: true, status: 200, text: async () => 'plain text response',
+      ok: true,
+      status: 200,
+      text: async () => 'plain text response',
     });
     const result = await mod.sonarGet('/api/test');
     assert.equal(result, 'plain text response');
@@ -98,8 +100,13 @@ describe('api', () => {
 
   it('sonarGet throws when fetch fails (network error)', async () => {
     origFetch = globalThis.fetch;
-    globalThis.fetch = async () => { throw new Error('ECONNREFUSED'); };
-    await assert.rejects(() => mod.sonarGet('/api/test'), /Cannot reach SonarQube/);
+    globalThis.fetch = async () => {
+      throw new Error('ECONNREFUSED');
+    };
+    await assert.rejects(
+      () => mod.sonarGet('/api/test'),
+      /Cannot reach SonarQube/,
+    );
     globalThis.fetch = origFetch;
   });
 
@@ -108,7 +115,10 @@ describe('api', () => {
     globalThis.fetch = async (url, opts) => {
       assert.equal(opts.method, 'POST');
       assert.match(opts.headers.authorization, /^Basic /);
-      assert.equal(opts.headers['Content-Type'], 'application/x-www-form-urlencoded');
+      assert.equal(
+        opts.headers['Content-Type'],
+        'application/x-www-form-urlencoded',
+      );
       return { ok: true, status: 200, text: async () => '{"success":true}' };
     };
     const result = await mod.sonarPost('/api/test', 'key=val');
@@ -119,39 +129,57 @@ describe('api', () => {
   it('sonarPost throws on non-ok response', async () => {
     origFetch = globalThis.fetch;
     globalThis.fetch = async () => ({
-      ok: false, status: 400, text: async () => '{"errors":[{"msg":"Bad"}]}',
+      ok: false,
+      status: 400,
+      text: async () => '{"errors":[{"msg":"Bad"}]}',
     });
-    await assert.rejects(() => mod.sonarPost('/api/test', 'key=val'), /SonarQube 400/);
+    await assert.rejects(
+      () => mod.sonarPost('/api/test', 'key=val'),
+      /SonarQube 400/,
+    );
     globalThis.fetch = origFetch;
   });
 
   it('sonarPost throws on non-ok with plain text', async () => {
     origFetch = globalThis.fetch;
     globalThis.fetch = async () => ({
-      ok: false, status: 400, text: async () => 'Bad Request',
+      ok: false,
+      status: 400,
+      text: async () => 'Bad Request',
     });
-    await assert.rejects(() => mod.sonarPost('/api/test', 'key=val'), /SonarQube 400: Bad Request/);
+    await assert.rejects(
+      () => mod.sonarPost('/api/test', 'key=val'),
+      /SonarQube 400: Bad Request/,
+    );
     globalThis.fetch = origFetch;
   });
 
   it('sonarGet throws without token', async () => {
     const prev = process.env.SONARQUBE_TOKEN;
     delete process.env.SONARQUBE_TOKEN;
-    await assert.rejects(() => mod.sonarGet('/api/test'), /SONARQUBE_TOKEN is not set/);
+    await assert.rejects(
+      () => mod.sonarGet('/api/test'),
+      /SONARQUBE_TOKEN is not set/,
+    );
     process.env.SONARQUBE_TOKEN = prev;
   });
 
   it('sonarPost throws without token', async () => {
     const prev = process.env.SONARQUBE_TOKEN;
     delete process.env.SONARQUBE_TOKEN;
-    await assert.rejects(() => mod.sonarPost('/api/test', 'key=val'), /SONARQUBE_TOKEN is not set/);
+    await assert.rejects(
+      () => mod.sonarPost('/api/test', 'key=val'),
+      /SONARQUBE_TOKEN is not set/,
+    );
     process.env.SONARQUBE_TOKEN = prev;
   });
 
   it('sonarCheckServer returns health when reachable', async () => {
     origFetch = globalThis.fetch;
     globalThis.fetch = async () => ({
-      ok: true, status: 200, json: async () => ({ health: 'GREEN' }),
+      ok: true,
+      status: 200,
+      json: async () => ({ health: 'GREEN' }),
       text: async () => '{"health":"GREEN"}',
     });
     const result = await mod.sonarCheckServer();
@@ -163,8 +191,12 @@ describe('api', () => {
   it('sonarCheckServer returns status when not ok', async () => {
     origFetch = globalThis.fetch;
     globalThis.fetch = async () => ({
-      ok: false, status: 503, text: async () => 'Service Unavailable',
-      json: async () => { throw new Error('not json'); },
+      ok: false,
+      status: 503,
+      text: async () => 'Service Unavailable',
+      json: async () => {
+        throw new Error('not json');
+      },
     });
     const result = await mod.sonarCheckServer();
     assert.equal(result.reachable, true);
@@ -174,7 +206,9 @@ describe('api', () => {
 
   it('sonarCheckServer returns hint on network error', async () => {
     origFetch = globalThis.fetch;
-    globalThis.fetch = async () => { throw new Error('fetch failed'); };
+    globalThis.fetch = async () => {
+      throw new Error('fetch failed');
+    };
     const result = await mod.sonarCheckServer();
     assert.equal(result.reachable, false);
     assert.ok(result.hint);
@@ -187,7 +221,9 @@ describe('api', () => {
     // Fresh import to pick up new env
     const freshMod = await import('../src/api.mjs');
     origFetch = globalThis.fetch;
-    globalThis.fetch = async () => { throw new Error('refused'); };
+    globalThis.fetch = async () => {
+      throw new Error('refused');
+    };
     const result = await freshMod.sonarCheckServer();
     assert.match(result.hint, /docker/i);
     globalThis.fetch = origFetch;
@@ -199,7 +235,9 @@ describe('api', () => {
     process.env.SONARQUBE_URL = 'not a url at all';
     const freshMod = await import('../src/api.mjs');
     origFetch = globalThis.fetch;
-    globalThis.fetch = async () => { throw new Error('refused'); };
+    globalThis.fetch = async () => {
+      throw new Error('refused');
+    };
     const result = await freshMod.sonarCheckServer();
     assert.match(result.hint, /not a valid URL/);
     globalThis.fetch = origFetch;

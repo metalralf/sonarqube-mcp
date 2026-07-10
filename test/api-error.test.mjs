@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
-import { describe, it, before, after } from 'node:test';
 import { spawn } from 'node:child_process';
+import { after, before, describe, it } from 'node:test';
 
 const BASE = 'http://sonarqube-mcp-test.local';
 
@@ -14,7 +14,9 @@ describe('sonarGet error handling', () => {
     origToken = process.env.SONARQUBE_TOKEN;
     process.env.SONARQUBE_URL = BASE;
     process.env.SONARQUBE_TOKEN = 'squ_test_token';
-    return import('../src/api.mjs').then((m) => { api = m; });
+    return import('../src/api.mjs').then((m) => {
+      api = m;
+    });
   });
 
   after(() => {
@@ -32,7 +34,7 @@ describe('sonarGet error handling', () => {
 
     await assert.rejects(
       () => api.sonarGet('/api/hotspots/search?projectKey=test'),
-      /User token/
+      /User token/,
     );
     globalThis.fetch = origFetch;
   });
@@ -47,7 +49,7 @@ describe('sonarGet error handling', () => {
 
     await assert.rejects(
       () => api.sonarGet('/api/system/info'),
-      /SonarQube 403/
+      /SonarQube 403/,
     );
     globalThis.fetch = origFetch;
   });
@@ -60,10 +62,7 @@ describe('sonarGet error handling', () => {
       text: async () => '{"errors":[{"msg":"Internal error"}]}',
     });
 
-    await assert.rejects(
-      () => api.sonarGet('/api/foo'),
-      /Internal error/
-    );
+    await assert.rejects(() => api.sonarGet('/api/foo'), /Internal error/);
     globalThis.fetch = origFetch;
   });
 
@@ -77,7 +76,7 @@ describe('sonarGet error handling', () => {
 
     await assert.rejects(
       () => api.sonarGet('/api/nonexistent'),
-      /SonarQube 404: Not Found/
+      /SonarQube 404: Not Found/,
     );
     globalThis.fetch = origFetch;
   });
@@ -107,13 +106,33 @@ describe('entry point smoke test', () => {
 
     await new Promise((r) => setTimeout(r, 300));
 
-    proc.stdin.write(JSON.stringify({
-      jsonrpc: '2.0', id: 1, method: 'initialize',
-      params: { protocolVersion: '2024-11-05', capabilities: {}, clientInfo: { name: 'test', version: '1' } },
-    }) + '\n');
-    proc.stdin.write(JSON.stringify({ jsonrpc: '2.0', method: 'notifications/initialized' }) + '\n');
-    proc.stdin.write(JSON.stringify({ jsonrpc: '2.0', id: 2, method: 'tools/list' }) + '\n');
-    proc.stdin.write(JSON.stringify({ jsonrpc: '2.0', id: 3, method: 'tools/call', params: { name: 'sonar_search_projects', arguments: { limit: 1 } } }) + '\n');
+    proc.stdin.write(
+      JSON.stringify({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'initialize',
+        params: {
+          protocolVersion: '2024-11-05',
+          capabilities: {},
+          clientInfo: { name: 'test', version: '1' },
+        },
+      }) + '\n',
+    );
+    proc.stdin.write(
+      JSON.stringify({ jsonrpc: '2.0', method: 'notifications/initialized' }) +
+        '\n',
+    );
+    proc.stdin.write(
+      JSON.stringify({ jsonrpc: '2.0', id: 2, method: 'tools/list' }) + '\n',
+    );
+    proc.stdin.write(
+      JSON.stringify({
+        jsonrpc: '2.0',
+        id: 3,
+        method: 'tools/call',
+        params: { name: 'sonar_search_projects', arguments: { limit: 1 } },
+      }) + '\n',
+    );
     proc.stdin.end();
 
     await new Promise((r) => proc.on('exit', r));
@@ -124,7 +143,9 @@ describe('entry point smoke test', () => {
     assert.equal(initResp.id, 1);
     assert.equal(initResp.result.serverInfo.name, 'sonarqube-mcp');
 
-    const toolListResp = lines.find((l) => l.includes('tools/list') || l.includes('tools'));
+    const toolListResp = lines.find(
+      (l) => l.includes('tools/list') || l.includes('tools'),
+    );
     assert.ok(toolListResp, 'should have tools/list response');
 
     const stderrText = stderrLines.join('\n');
@@ -150,12 +171,30 @@ describe('entry point smoke test', () => {
 
     await new Promise((r) => setTimeout(r, 300));
 
-    proc.stdin.write(JSON.stringify({
-      jsonrpc: '2.0', id: 1, method: 'initialize',
-      params: { protocolVersion: '2024-11-05', capabilities: {}, clientInfo: { name: 'test', version: '1' } },
-    }) + '\n');
-    proc.stdin.write(JSON.stringify({ jsonrpc: '2.0', method: 'notifications/initialized' }) + '\n');
-    proc.stdin.write(JSON.stringify({ jsonrpc: '2.0', id: 2, method: 'tools/call', params: { name: 'nonexistent_tool', arguments: {} } }) + '\n');
+    proc.stdin.write(
+      JSON.stringify({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'initialize',
+        params: {
+          protocolVersion: '2024-11-05',
+          capabilities: {},
+          clientInfo: { name: 'test', version: '1' },
+        },
+      }) + '\n',
+    );
+    proc.stdin.write(
+      JSON.stringify({ jsonrpc: '2.0', method: 'notifications/initialized' }) +
+        '\n',
+    );
+    proc.stdin.write(
+      JSON.stringify({
+        jsonrpc: '2.0',
+        id: 2,
+        method: 'tools/call',
+        params: { name: 'nonexistent_tool', arguments: {} },
+      }) + '\n',
+    );
     proc.stdin.end();
 
     await new Promise((r) => proc.on('exit', r));
@@ -164,6 +203,9 @@ describe('entry point smoke test', () => {
     assert.ok(errResp, 'should have error response');
     const parsed = JSON.parse(errResp);
     assert.ok(parsed.result.isError);
-    assert.match(parsed.result.content[0].text, /Tool nonexistent_tool not found/);
+    assert.match(
+      parsed.result.content[0].text,
+      /Tool nonexistent_tool not found/,
+    );
   });
 });

@@ -7,7 +7,8 @@ const freshConfigs = async (env) => {
     prev[k] = process.env[k];
     process.env[k] = v;
   }
-  const url = new URL('../src/handlers.mjs', import.meta.url).href + '?t=' + Date.now();
+  const url =
+    new URL('../src/handlers.mjs', import.meta.url).href + '?t=' + Date.now();
   const mod = await import(url);
   for (const [k, v] of Object.entries(env)) {
     if (prev[k] === undefined) delete process.env[k];
@@ -30,15 +31,26 @@ describe('toolset filtering', () => {
     const configs = await freshConfigs({ SONARQUBE_READ_ONLY: 'true' });
     const names = configs.map((t) => t.name);
     assert.ok(names.includes('sonar_issues'), 'read tools present');
-    assert.ok(!names.includes('sonar_set_issue_status'), 'write tools excluded');
-    assert.ok(!names.includes('sonar_change_hotspot_status'), 'write tools excluded');
+    assert.ok(
+      !names.includes('sonar_set_issue_status'),
+      'write tools excluded',
+    );
+    assert.ok(
+      !names.includes('sonar_change_hotspot_status'),
+      'write tools excluded',
+    );
     assert.ok(!names.includes('sonar_run_analysis'), 'write tools excluded');
     assert.ok(!names.includes('sonar_setup_scanner'), 'write tools excluded');
-    assert.ok(!names.includes('sonar_call_multiple'), 'meta tool excluded in read-only mode');
+    assert.ok(
+      !names.includes('sonar_call_multiple'),
+      'meta tool excluded in read-only mode',
+    );
   });
 
   it('toolset filtering limits to requested categories', async () => {
-    const configs = await freshConfigs({ SONARQUBE_TOOLSETS: 'issues,quality' });
+    const configs = await freshConfigs({
+      SONARQUBE_TOOLSETS: 'issues,quality',
+    });
     const names = configs.map((t) => t.name);
     assert.ok(names.includes('sonar_issues'), 'issues toolset present');
     assert.ok(names.includes('sonar_quality_gate'), 'quality toolset present');
@@ -47,17 +59,28 @@ describe('toolset filtering', () => {
   });
 
   it('read-only + toolset filtering work together', async () => {
-    const configs = await freshConfigs({ SONARQUBE_TOOLSETS: 'issues,hotspots', SONARQUBE_READ_ONLY: 'true' });
+    const configs = await freshConfigs({
+      SONARQUBE_TOOLSETS: 'issues,hotspots',
+      SONARQUBE_READ_ONLY: 'true',
+    });
     const names = configs.map((t) => t.name);
     assert.ok(names.includes('sonar_issues'), 'issues present');
     assert.ok(names.includes('sonar_hotspots'), 'hotspots present');
-    assert.ok(!names.includes('sonar_set_issue_status'), 'write tools excluded');
-    assert.ok(!names.includes('sonar_change_hotspot_status'), 'write tools excluded');
+    assert.ok(
+      !names.includes('sonar_set_issue_status'),
+      'write tools excluded',
+    );
+    assert.ok(
+      !names.includes('sonar_change_hotspot_status'),
+      'write tools excluded',
+    );
     assert.ok(!names.includes('sonar_quality_gate'), 'quality excluded');
   });
 
   it('invalid toolset category is ignored', async () => {
-    const configs = await freshConfigs({ SONARQUBE_TOOLSETS: 'nonexistent_category' });
+    const configs = await freshConfigs({
+      SONARQUBE_TOOLSETS: 'nonexistent_category',
+    });
     const names = configs.map((t) => t.name);
     // No valid category matched → all tools returned
     assert.ok(configs.length >= 34);
@@ -70,7 +93,10 @@ describe('toolset filtering', () => {
   });
 
   it('read-only mode without envToolsets set', async () => {
-    const configs = await freshConfigs({ SONARQUBE_READ_ONLY: 'true', SONARQUBE_TOOLSETS: '' });
+    const configs = await freshConfigs({
+      SONARQUBE_READ_ONLY: 'true',
+      SONARQUBE_TOOLSETS: '',
+    });
     const names = configs.map((t) => t.name);
     assert.ok(!names.includes('sonar_set_issue_status'));
     assert.ok(names.includes('sonar_issues'));

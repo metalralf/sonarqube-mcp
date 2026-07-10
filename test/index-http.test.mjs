@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
-import { describe, it, after } from 'node:test';
 import { spawn } from 'node:child_process';
+import { after, describe, it } from 'node:test';
 
 describe('index.mjs HTTP transport', () => {
   /** @type {import('node:child_process').ChildProcess} */
@@ -31,7 +31,11 @@ describe('index.mjs HTTP transport', () => {
 
     const stderrText = await new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
-        reject(new Error(`timeout waiting for server. stderr: ${stderrLines.join('')}`));
+        reject(
+          new Error(
+            `timeout waiting for server. stderr: ${stderrLines.join('')}`,
+          ),
+        );
       }, 5000);
       proc.stderr.on('data', () => {
         const text = stderrLines.join('');

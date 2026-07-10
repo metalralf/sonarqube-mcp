@@ -1,14 +1,18 @@
 import assert from 'node:assert/strict';
-import { describe, it } from 'node:test';
-import { mkdtempSync, writeFileSync, existsSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { describe, it } from 'node:test';
 import { TOOL_CONFIGS } from '../src/handlers.mjs';
 
 describe('handlers', () => {
   it('all handlers exist and are functions', () => {
     for (const { name, handler } of TOOL_CONFIGS) {
-      assert.equal(typeof handler, 'function', `${name} handler should be a function`);
+      assert.equal(
+        typeof handler,
+        'function',
+        `${name} handler should be a function`,
+      );
     }
   });
 
@@ -33,35 +37,50 @@ describe('handlers', () => {
   });
 
   it('sonar_hotspot_details throws when key missing', async () => {
-    const h = TOOL_CONFIGS.find((t) => t.name === 'sonar_hotspot_details').handler;
+    const h = TOOL_CONFIGS.find(
+      (t) => t.name === 'sonar_hotspot_details',
+    ).handler;
     await assert.rejects(() => h({}), /hotspotKey is required/);
   });
 
   it('sonar_change_hotspot_status throws when key missing', async () => {
-    const h = TOOL_CONFIGS.find((t) => t.name === 'sonar_change_hotspot_status').handler;
+    const h = TOOL_CONFIGS.find(
+      (t) => t.name === 'sonar_change_hotspot_status',
+    ).handler;
     await assert.rejects(() => h({}), /hotspotKey is required/);
   });
 
   it('sonar_issues_bulk_transition throws when keys missing', async () => {
-    const h = TOOL_CONFIGS.find((t) => t.name === 'sonar_issues_bulk_transition').handler;
+    const h = TOOL_CONFIGS.find(
+      (t) => t.name === 'sonar_issues_bulk_transition',
+    ).handler;
     await assert.rejects(() => h({}), /issueKeys array is required/);
-    await assert.rejects(() => h({ issueKeys: [] }), /issueKeys array is required/);
+    await assert.rejects(
+      () => h({ issueKeys: [] }),
+      /issueKeys array is required/,
+    );
   });
 
-  it('sonar_raw adds usage hint on 4xx errors', { skip: !process.env.SONARQUBE_TOKEN }, async () => {
+  it('sonar_raw adds usage hint on 4xx errors', {
+    skip: !process.env.SONARQUBE_TOKEN,
+  }, async () => {
     const h = TOOL_CONFIGS.find((t) => t.name === 'sonar_raw').handler;
     try {
       await h({ path: '/api/measures/component?metricKeys=coverage' });
       assert.fail('should have thrown');
     } catch (e) {
-      const msg = (/** @type {Error} */ (e)).message;
+      const msg = /** @type {Error} */ (e).message;
       assert.ok(msg.includes('SonarQube 400'), 'should have 400 error');
       assert.ok(msg.includes('Tip:'), 'should include usage hint');
     }
   });
 
-  it('sonar_list_pull_requests returns empty array on CE', { skip: !process.env.SONARQUBE_TOKEN }, async () => {
-    const h = TOOL_CONFIGS.find((t) => t.name === 'sonar_list_pull_requests').handler;
+  it('sonar_list_pull_requests returns empty array on CE', {
+    skip: !process.env.SONARQUBE_TOKEN,
+  }, async () => {
+    const h = TOOL_CONFIGS.find(
+      (t) => t.name === 'sonar_list_pull_requests',
+    ).handler;
     try {
       const res = await h({ projectKey: 'sonarcube_mcp' });
       assert.ok(Array.isArray(res));
@@ -70,8 +89,12 @@ describe('handlers', () => {
     }
   });
 
-  it('sonar_list_webhooks falls back to default project', { skip: !process.env.SONARQUBE_PROJECT }, async () => {
-    const h = TOOL_CONFIGS.find((t) => t.name === 'sonar_list_webhooks').handler;
+  it('sonar_list_webhooks falls back to default project', {
+    skip: !process.env.SONARQUBE_PROJECT,
+  }, async () => {
+    const h = TOOL_CONFIGS.find(
+      (t) => t.name === 'sonar_list_webhooks',
+    ).handler;
     const res = await h({});
     assert.ok(res.webhooks !== undefined);
   });
@@ -88,7 +111,12 @@ describe('handlers', () => {
     process.env.SONARQUBE_DISABLE_DOCKER = 'true';
     const h = TOOL_CONFIGS.find((t) => t.name === 'sonar_run_analysis').handler;
     const tmp = mkdtempSync(join(tmpdir(), 'sonar-test-'));
-    const res = await h({ cwd: tmp, host: 'http://test:9000', projectKey: 'test', sources: '.' });
+    const res = await h({
+      cwd: tmp,
+      host: 'http://test:9000',
+      projectKey: 'test',
+      sources: '.',
+    });
     assert.equal(res.success, false);
     assert.ok(res.output);
     const propsPath = join(tmp, 'sonar-project.properties');
@@ -104,16 +132,24 @@ describe('handlers', () => {
     delete process.env.SONARQUBE_TOKEN;
     const h = TOOL_CONFIGS.find((t) => t.name === 'sonar_run_analysis').handler;
     const tmp = mkdtempSync(join(tmpdir(), 'sonar-test-'));
-    writeFileSync(join(tmp, 'sonar-project.properties'), 'sonar.projectKey=test\nsonar.sources=.\n');
+    writeFileSync(
+      join(tmp, 'sonar-project.properties'),
+      'sonar.projectKey=test\nsonar.sources=.\n',
+    );
     await assert.rejects(() => h({ cwd: tmp }), /No token/);
     process.env.SONARQUBE_TOKEN = prev;
   });
 
   it('sonar_setup_scanner detects pnpm lock file', async () => {
     process.env.SONARQUBE_DISABLE_DOCKER = 'true';
-    const h = TOOL_CONFIGS.find((t) => t.name === 'sonar_setup_scanner').handler;
+    const h = TOOL_CONFIGS.find(
+      (t) => t.name === 'sonar_setup_scanner',
+    ).handler;
     const tmp = mkdtempSync(join(tmpdir(), 'sonar-test-'));
-    writeFileSync(join(tmp, 'package.json'), '{"name":"test","version":"1.0.0"}');
+    writeFileSync(
+      join(tmp, 'package.json'),
+      '{"name":"test","version":"1.0.0"}',
+    );
     writeFileSync(join(tmp, 'pnpm-lock.yaml'), 'lockfileVersion: 1\n');
     const res = await h({ cwd: tmp });
     assert.ok(res.installed);
@@ -123,9 +159,14 @@ describe('handlers', () => {
 
   it('sonar_setup_scanner detects yarn lock file', async () => {
     process.env.SONARQUBE_DISABLE_DOCKER = 'true';
-    const h = TOOL_CONFIGS.find((t) => t.name === 'sonar_setup_scanner').handler;
+    const h = TOOL_CONFIGS.find(
+      (t) => t.name === 'sonar_setup_scanner',
+    ).handler;
     const tmp = mkdtempSync(join(tmpdir(), 'sonar-test-'));
-    writeFileSync(join(tmp, 'package.json'), '{"name":"test","version":"1.0.0"}');
+    writeFileSync(
+      join(tmp, 'package.json'),
+      '{"name":"test","version":"1.0.0"}',
+    );
     writeFileSync(join(tmp, 'yarn.lock'), '# yarn lockfile\n');
     await assert.rejects(() => h({ cwd: tmp }), /Command failed/);
     delete process.env.SONARQUBE_DISABLE_DOCKER;
@@ -133,13 +174,20 @@ describe('handlers', () => {
 
   it('sonar_setup_scanner runs npm in temp dir with package.json', async () => {
     process.env.SONARQUBE_DISABLE_DOCKER = 'true';
-    const h = TOOL_CONFIGS.find((t) => t.name === 'sonar_setup_scanner').handler;
+    const h = TOOL_CONFIGS.find(
+      (t) => t.name === 'sonar_setup_scanner',
+    ).handler;
     const tmp = mkdtempSync(join(tmpdir(), 'sonar-test-'));
-    writeFileSync(join(tmp, 'package.json'), '{"name":"test","version":"1.0.0"}');
+    writeFileSync(
+      join(tmp, 'package.json'),
+      '{"name":"test","version":"1.0.0"}',
+    );
     const res = await h({ cwd: tmp });
     assert.ok(res.installed);
     assert.ok(res.output);
-    assert.ok(existsSync(join(tmp, 'node_modules', 'sonar-scanner', 'package.json')));
+    assert.ok(
+      existsSync(join(tmp, 'node_modules', 'sonar-scanner', 'package.json')),
+    );
     delete process.env.SONARQUBE_DISABLE_DOCKER;
   });
 
@@ -170,7 +218,10 @@ describe('handlers', () => {
     process.env.SONARQUBE_TOKEN = 'squ_test';
     const h = TOOL_CONFIGS.find((t) => t.name === 'sonar_run_analysis').handler;
     const tmp = mkdtempSync(join(tmpdir(), 'sonar-test-'));
-    writeFileSync(join(tmp, 'sonar-project.properties'), 'sonar.host.url=http://test:9000\nsonar.projectKey=test\nsonar.sources=.\n');
+    writeFileSync(
+      join(tmp, 'sonar-project.properties'),
+      'sonar.host.url=http://test:9000\nsonar.projectKey=test\nsonar.sources=.\n',
+    );
     const res = await h({ cwd: tmp });
     assert.equal(res.success, false);
     process.env.SONARQUBE_TOKEN = prev;
@@ -183,7 +234,12 @@ describe('handlers', () => {
     process.env.SONARQUBE_TOKEN = 'squ_test';
     const h = TOOL_CONFIGS.find((t) => t.name === 'sonar_run_analysis').handler;
     const tmp = mkdtempSync(join(tmpdir(), 'sonar-test-'));
-    const res = await h({ cwd: tmp, host: 'http://test:9000', projectKey: 'test', sources: '.' });
+    const res = await h({
+      cwd: tmp,
+      host: 'http://test:9000',
+      projectKey: 'test',
+      sources: '.',
+    });
     assert.equal(res.success, false);
     process.env.SONARQUBE_TOKEN = prev;
     delete process.env.SONARQUBE_DISABLE_DOCKER;

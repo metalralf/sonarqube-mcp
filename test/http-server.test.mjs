@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { describe, it, after, before } from 'node:test';
+import { after, before, describe, it } from 'node:test';
 import { TOOL_CONFIGS } from '../src/handlers.mjs';
 
 describe('http server', () => {
@@ -157,7 +157,10 @@ describe('http server — default host/port', () => {
     try {
       const s = await startHttpServer([]);
       const addr = s.address();
-      assert.ok(addr.port === 8080 || addr.port > 0, `bound to unexpected port ${addr.port}`);
+      assert.ok(
+        addr.port === 8080 || addr.port > 0,
+        `bound to unexpected port ${addr.port}`,
+      );
       s.close();
     } catch (e) {
       // EADDRINUSE is acceptable if something else holds 8080 in the environment.
