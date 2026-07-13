@@ -1042,18 +1042,16 @@ const ALL_TOOLS = [
       const sonarSources = sources || langCfg?.sources || 'src';
       const sonarTests = tests;
 
-      if (!existsSync(propsPath)) {
-        writeFileSync(
-          propsPath,
-          buildSonarProps(
-            projectKey || process.env.SONARQUBE_PROJECT || 'my_project',
-            hostUrl,
-            sonarSources,
-            lang,
-            dir,
-          ),
-        );
-      }
+      writeFileSync(
+        propsPath,
+        buildSonarProps(
+          projectKey || process.env.SONARQUBE_PROJECT || 'my_project',
+          hostUrl,
+          sonarSources,
+          lang,
+          dir,
+        ),
+      );
 
       const buildResult = autoBuild(dir, langCfg);
       const baseArgs = buildScannerArgs({
