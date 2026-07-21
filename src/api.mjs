@@ -32,7 +32,7 @@ const authHeader = () => {
   const token = getToken();
   return scheme === 'bearer'
     ? `Bearer ${token}`
-    : `Basic ${Buffer.from(token + ':').toString('base64')}`;
+    : `Basic ${Buffer.from(`${token}:`).toString('base64')}`;
 };
 
 /** @returns {string} */

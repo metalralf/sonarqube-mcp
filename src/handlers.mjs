@@ -1718,7 +1718,7 @@ const ALL_TOOLS = [
       let prevSig = '';
       for (let i = 0; i < input.length; i++) {
         const c = input[i];
-        const sig = c.name + '|' + JSON.stringify(c.args || {});
+        const sig = `${c.name}|${JSON.stringify(c.args || {})}`;
         if (sig === prevSig) {
           duplicates++;
           continue;

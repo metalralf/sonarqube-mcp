@@ -338,7 +338,7 @@ export const detectGitBranch = (dir) => {
  */
 const runDockerScanner = (dir, baseArgs) =>
   execSync(
-    `${resolveDocker()} run --rm ${getDockerFlags() ? getDockerFlags() + ' ' : ''}-v "${dir}:${getDockerMountPath()}" ${getDockerImage()} ${baseArgs.join(' ')}`,
+    `${resolveDocker()} run --rm ${getDockerFlags() ? `${getDockerFlags()} ` : ''}-v "${dir}:${getDockerMountPath()}" ${getDockerImage()} ${baseArgs.join(' ')}`,
     { encoding: 'utf8', timeout: getScannerTimeout() },
   );
 

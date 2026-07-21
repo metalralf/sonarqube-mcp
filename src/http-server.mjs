@@ -94,7 +94,7 @@ const handleRequest = async (req, res, tools, toolMap, schemas, host, port) => {
 /**
  * @param {string} toolName
  * @param {http.IncomingMessage} req
- * @param {http.ServerResponse} res
+ * @param {http.ServerResponse} _res
  * @param {(status: number, data: any) => void} send
  * @param {Map<string, any>} toolMap
  * @param {Record<string, import('zod').ZodObject<any>>} schemas
@@ -102,7 +102,7 @@ const handleRequest = async (req, res, tools, toolMap, schemas, host, port) => {
 const handleToolExecution = async (
   toolName,
   req,
-  res,
+  _res,
   send,
   toolMap,
   schemas,
